@@ -169,9 +169,11 @@ public:
 	}
 	
 
-	CefRefPtr<CefBrowserHost> get_browser_host()
+	CefRefPtr<CefBrowserHost> get_browser_host() const
 	{
-		return browser_->GetHost();
+		if (browser_)
+			return browser_->GetHost();
+		return nullptr;
 	}
 
 	void close()
@@ -256,6 +258,7 @@ private:
 	{
 		CASPAR_ASSERT(CefCurrentlyOn(TID_UI));
 
+		removed_ = true;
 		browser_ = nullptr;
 	}
 
@@ -508,6 +511,13 @@ public:
 
 	void on_interaction(const core::interaction_event::ptr& event) override
 	{
+		if (!client_ || client_->is_removed())
+			return;
+
+		auto host = client_->get_browser_host();
+		if (!host)
+			return;
+
 		if (core::is<core::mouse_move_event>(event))
 		{
 			auto move = core::as<core::mouse_move_event>(event);
@@ -517,7 +527,7 @@ public:
 			CefMouseEvent e;
 			e.x = x;
 			e.y = y;
-			client_->get_browser_host()->SendMouseMoveEvent(e, false);
+			host->SendMouseMoveEvent(e, false);
 		}
 		else if (core::is<core::mouse_button_event>(event))
 		{
@@ -528,7 +538,7 @@ public:
 			CefMouseEvent e;
 			e.x = x;
 			e.y = y;
-			client_->get_browser_host()->SendMouseClickEvent(
+			host->SendMouseClickEvent(
 					e,
 					static_cast<CefBrowserHost::MouseButtonType>(button->button),
 					!button->pressed,
@@ -544,7 +554,7 @@ public:
 			e.x = x;
 			e.y = y;
 			static const int WHEEL_TICKS_AMPLIFICATION = 40;
-			client_->get_browser_host()->SendMouseWheelEvent(
+			host->SendMouseWheelEvent(
 					e,
 					0,                                               // delta_x
 					wheel->ticks_delta * WHEEL_TICKS_AMPLIFICATION); // delta_y
@@ -553,7 +563,7 @@ public:
 
 	bool collides(double x, double y) const override
 	{
-		return client_ != nullptr;
+		return client_ != nullptr && !client_->is_removed();
 	}
 
 	core::draw_frame receive_impl() override
