@@ -416,7 +416,7 @@ private:
 
 			timer.tick(1.0 / (format_desc_.fps * format_desc_.field_count));
 			invoke_requested_animation_frames();
-			graph_->set_tag(diagnostics::tag_severity::WARNING, "browser-dropped-frame");
+			graph_->set_tag(diagnostics::tag_severity::SILENT, "browser-dropped-frame");
 		}
 		else
 		{
@@ -426,7 +426,7 @@ private:
 					last_frame_ = last_progressive_frame_;
 				});
 
-			graph_->set_tag(diagnostics::tag_severity::WARNING, "browser-dropped-frame");
+			graph_->set_tag(diagnostics::tag_severity::SILENT, "browser-dropped-frame");
 		}
 	}
 
