@@ -16,6 +16,11 @@ set(HEADERS
 
 add_executable(unit-test ${SOURCES} ${HEADERS})
 add_precompiled_header(unit-test stdafx.h FORCEINCLUDE)
+if (CMAKE_COMPILER_IS_GNUCXX)
+	target_link_libraries(unit-test
+		-no-pie # Don't produce a position independent executable
+	)
+endif ()
 
 target_link_libraries(unit-test
 		accelerator
