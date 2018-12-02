@@ -61,7 +61,6 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${TBB_INCLUDE_DIRS})
 include_directories(${FFmpeg_INCLUDE_DIRS})
 include_directories(${RXCPP_INCLUDE_DIRS})
-include_directories(${ASMLIB_INCLUDE_DIRS})
 
 set_target_properties(ffmpeg PROPERTIES FOLDER modules)
 source_group(sources ./*)
@@ -77,6 +76,10 @@ source_group(sources\\producer producer/*)
 if(NOT USE_SYSTEM_FFMPEG)
 	if(MSVC)
 		set(FFmpeg_LIBRARIES
+				ffmpeg
+				common
+				core
+	
 				avformat.lib
 				avcodec.lib
 				avutil.lib
@@ -86,6 +89,10 @@ if(NOT USE_SYSTEM_FFMPEG)
 				swresample.lib)
 	else()
 		set(FFmpeg_LIBRARIES
+				ffmpeg
+				common
+				core
+
 				-Wl,--start-group
 				avformat.so
 				avcodec.so
