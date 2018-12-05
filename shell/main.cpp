@@ -115,24 +115,6 @@ void do_run(
 		tbb::atomic<bool>& should_wait_for_keypress)
 {
 	ensure_gpf_handler_installed_for_thread("Console thread");
-	std::wstring wcmd;
-	while(true)
-	{
-            if (!std::getline(std::wcin, wcmd)) { // TODO: It's blocking...
-                std::wcin.clear();
-                continue;
-            }
-            if (boost::iequals(wcmd, L"EXIT") || boost::iequals(wcmd, L"Q") || boost::iequals(wcmd, L"QUIT") ||
-                boost::iequals(wcmd, L"BYE")) {
-                CASPAR_LOG(info) << L"Received message from Console: " << wcmd << L"\\r\\n";
-                should_wait_for_keypress = true;
-                shutdown(false); // false to not restart
-                break;
-            }
-
-            wcmd += L"\r\n";
-            amcp->parse(wcmd);
-	}
 };
 
 bool run(const std::wstring& config_file_name, tbb::atomic<bool>& should_wait_for_keypress)
