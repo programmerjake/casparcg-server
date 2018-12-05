@@ -41,10 +41,10 @@ SERVER_FOLDER="$BUILD_ARCHIVE_NAME"
 if [ -f "$SERVER_FOLDER" ]; then
     rm -Rf "$SERVER_FOLDER" || fail "Could not delete $SERVER_FOLDER"
 fi
-BIN_DIR="$SERVER_FOLDER/usr/bin"
-LIB_DIR="$SERVER_FOLDER/usr/lib"
-DOC_DIR="$SERVER_FOLDER/usr/share/doc/casparcg-server"
-FONT_DIR="$SERVER_FOLDER/usr/share/fonts"
+BIN_DIR="$SERVER_FOLDER/bin"
+LIB_DIR="$SERVER_FOLDER/lib"
+DOC_DIR="$SERVER_FOLDER/doc/"
+FONT_DIR="$SERVER_FOLDER/fonts"
 
 mkdir "$SERVER_FOLDER" || fail "Could not create $SERVER_FOLDER"
 mkdir -p "$BIN_DIR"    || fail "Could not create $BIN_DIR"
@@ -59,6 +59,11 @@ cp -fa  shell/*.ttf "$FONT_DIR/" 2>/dev/null       || echo "Did not copy fonts"
 cp -fa  shell/casparcg "$BIN_DIR/casparcg-server"  || fail "Could not copy server executable"
 cp -fa  shell/casparcg.config "$DOC_DIR/"          || fail "Could not copy server config"
 cp -faR shell/locales "$BIN_DIR/" 2>/dev/null      || echo "Did not copy server CEF locales"
+cp -Rf shell/swiftshader "$SERVER_FOLDER/bin/" || fail "Could not copy server CEF swiftshader"
+cp -f  shell/*.pak "$SERVER_FOLDER/bin/" || fail "Could not copy CEF resources"
+cp -f  shell/*.bin "$SERVER_FOLDER/bin/" || fail "Could not copy V8 resources"
+cp -f  shell/*.dat "$SERVER_FOLDER/bin/" || fail "Could not copy ICU resources"
+
 
 # Copy binary dependencies
 echo Copying binary dependencies...
