@@ -723,11 +723,6 @@ private:
 			set_pixel_format(filt_vsink, requested_fmt);
 		}
 
-		if (in_video_format_.width < 1280)
-			video_graph_->scale_sws_opts = "out_color_matrix=bt601";
-		else
-			video_graph_->scale_sws_opts = "out_color_matrix=bt709";
-
 		configure_filtergraph(
 				*video_graph_,
 				filtergraph,
