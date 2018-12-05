@@ -337,6 +337,8 @@ if(OS_WINDOWS)
       1900  # VS2015
       1910  # VS2017 <= 15.2
       1911  # VS2017 >= 15.3
+      1912  # VS2017 >= 15.5
+      1913  # VS2017 >= 15.7?
       )
     list(FIND supported_msvc_versions ${MSVC_VERSION} _index)
     if (${_index} EQUAL -1)
@@ -367,12 +369,12 @@ if(OS_WINDOWS)
     ${CEF_DEBUG_INFO_FLAG}
     )
   list(APPEND CEF_COMPILER_FLAGS_DEBUG
-    /MTd          # Multithreaded debug runtime
+    #/MTd          # Multithreaded debug runtime
     /RTC1         # Disable optimizations
     /Od           # Enable basic run-time checks
     )
   list(APPEND CEF_COMPILER_FLAGS_RELEASE
-    /MT           # Multithreaded release runtime
+    #/MT           # Multithreaded release runtime
     /O2           # Optimize for maximum speed
     /Ob2          # Inline any suitable function
     /GF           # Enable string pooling
