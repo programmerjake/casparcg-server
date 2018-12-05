@@ -57,9 +57,8 @@ else()
 endif()
 add_definitions( -DBOOST_THREAD_VERSION=4 )
 add_definitions( "-DBOOST_ASIO_ERROR_CATEGORY_NOEXCEPT=noexcept(true)" ) # Workaround macro redefinition in boost
-add_definitions( -D_GLIBCXX_USE_CXX11_ABI=0 ) # Allow compilation in GCC 5 while keeping old dependencies
-add_definitions( -DCASPAR_SOURCE_PREFIX="${CMAKE_CURRENT_SOURCE_DIR}" )
-
+add_definitions( -D_GLIBCXX_USE_CXX11_ABI=1 ) # Allow compilation in GCC 5 while keeping old dependencies
+add_definitions( -DCASPAR_SOURCE_PREFIX="${CMAKE_CURRENT_SOURCE_DIR}" ) 
 
 ## TBB ##
 if(USE_SYSTEM_TBB)
@@ -176,8 +175,6 @@ else()
 	link_directories("${DEPENDENCIES_FOLDER}/openal/lib/${PLATFORM_FOLDER_NAME}")
 endif()
 
-link_directories("${DEPENDENCIES_FOLDER}/asmlib")
-
 ## Bluefish ##
 set(BLUEFISH_INCLUDE_DIRS		"${DEPENDENCIES_FOLDER}/bluefish/include")
 link_directories("${DEPENDENCIES_FOLDER}/bluefish/lib")
@@ -222,7 +219,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_definitions( -DUNICODE )
 add_definitions( -D_UNICODE )
-add_definitions( -D_GLIBCXX_USE_CXX11_ABI=0 ) # Allow compilation in GCC 5 while keeping old dependencies
 add_definitions( -DCASPAR_SOURCE_PREFIX="${CMAKE_CURRENT_SOURCE_DIR}" )
 
 if (MSVC)
@@ -306,5 +302,4 @@ add_subdirectory(modules)
 
 add_subdirectory(protocol)
 add_subdirectory(shell)
-add_subdirectory(unit-test)
-
+#add_subdirectory(unit-test)
