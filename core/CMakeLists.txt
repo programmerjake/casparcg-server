@@ -144,12 +144,12 @@ add_library(core ${SOURCES} ${HEADERS})
 add_precompiled_header(core StdAfx.h FORCEINCLUDE)
 
 include_directories(..)
-include_directories(${BOOST_INCLUDE_PATH})
-include_directories(${RXCPP_INCLUDE_PATH})
-include_directories(${TBB_INCLUDE_PATH})
-include_directories(${SFML_INCLUDE_PATH})
-include_directories(${FREETYPE_INCLUDE_PATH})
-include_directories(${GLEW_INCLUDE_PATH})
+include_directories(${BOOST_INCLUDE_DIRS})
+include_directories(${RXCPP_INCLUDE_DIRS})
+include_directories(${TBB_INCLUDE_DIRS})
+include_directories(${SFML_INCLUDE_DIRS})
+include_directories(${FREETYPE_INCLUDE_DIRS})
+include_directories(${GLEW_INCLUDE_DIRS})
 
 source_group(sources ./*)
 source_group(sources\\consumer consumer/*)
@@ -171,16 +171,7 @@ source_group(sources\\producer\\text producer/text/*)
 source_group(sources\\producer\\transition producer/transition/*)
 source_group(sources\\producer\\separated producer/separated/*)
 
-if (MSVC)
-	target_link_libraries(core
-			common
-
-			freetype.lib
-	)
-else()
-	target_link_libraries(core
-			common
-
-			freetype
-	)
-endif()
+target_link_libraries(core
+	common
+	"${FREETYPE_LIBRARIES}"
+)

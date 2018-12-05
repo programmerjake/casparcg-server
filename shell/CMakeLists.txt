@@ -57,9 +57,9 @@ target_link_libraries(generate_docs
 
 
 include_directories(..)
-include_directories(${BOOST_INCLUDE_PATH})
-include_directories(${RXCPP_INCLUDE_PATH})
-include_directories(${TBB_INCLUDE_PATH})
+include_directories(${BOOST_INCLUDE_DIRS})
+include_directories(${RXCPP_INCLUDE_DIRS})
+include_directories(${TBB_INCLUDE_DIRS})
 
 source_group(sources ./*)
 
@@ -80,7 +80,9 @@ target_link_libraries(casparcg
 
 add_custom_target(casparcg_copy_dependencies ALL)
 
-casparcg_add_runtime_dependency("${LIBERATION_FONTS_BIN_PATH}/LiberationSans-Regular.ttf")
+if(NOT USE_SYSTEM_FONTS)
+	casparcg_add_runtime_dependency("${LIBERATION_FONTS_BIN_DIR}/LiberationSans-Regular.ttf")
+endif()
 casparcg_add_runtime_dependency("${CMAKE_CURRENT_SOURCE_DIR}/casparcg.config")
 
 set(OUTPUT_FOLDER "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}")
