@@ -1,0 +1,9 @@
+ffmpeg
+libglew2.0
+libsfml-graphics2.4
+libboost-chrono1.62.0
+libboost-date-time1.62.0
+libboost-filesystem1.62.0
+libboost-locale1.62.0
+libboost-log1.62.0
+libfreeimage3
