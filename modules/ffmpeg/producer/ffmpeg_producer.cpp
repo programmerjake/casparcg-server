@@ -623,6 +623,18 @@ public:
 	}
 };
 
+bool has_invalid_protocol(const std::wstring& filename)
+{
+    static const auto invalid_protocols = {L"ndi:"};
+
+    auto protocol = boost::to_lower_copy(boost::filesystem::path(filename).root_name().wstring());
+
+    if (std::find(invalid_protocols.begin(), invalid_protocols.end(), protocol) != invalid_protocols.end()) {
+        return true;
+    }
+    return false;
+}
+
 void describe_producer(core::help_sink& sink, const core::help_repository& repo)
 {
 	sink.short_description(L"A producer for playing media files supported by FFmpeg.");
@@ -675,7 +687,10 @@ spl::shared_ptr<core::frame_producer> create_producer(
 	{
 		// File
 		file_or_url = probe_stem(env::media_folder() + L"/" + file_or_url, false);
-	}
+	} else if (has_invalid_protocol(file_or_url) {
+                return core::frame_producer::empty();
+        }
+
 
 	if (file_or_url.empty())
 		return core::frame_producer::empty();
