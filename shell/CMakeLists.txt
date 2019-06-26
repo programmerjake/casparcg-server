@@ -41,20 +41,6 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 	)
 endif ()
 
-add_executable(generate_docs generate_docs.cpp included_modules.h)
-if (CMAKE_COMPILER_IS_GNUCXX)
-	target_link_libraries(generate_docs
-		-no-pie # Don't produce a position independent executable
-	)
-endif ()
-
-target_link_libraries(generate_docs
-		protocol
-		accelerator
-
-		"${CASPARCG_MODULE_PROJECTS}"
-)
-
 
 include_directories(..)
 include_directories(${BOOST_INCLUDE_DIRS})
