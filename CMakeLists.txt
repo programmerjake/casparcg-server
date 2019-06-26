@@ -23,7 +23,7 @@ option(BUILD_MODULE_DECKLINK "Build Decklink module" ON)
 option(BUILD_MODULE_HTML "Build HTML module" ON)
 option(BUILD_MODULE_PSD "Build PSD module" ON)
 CMAKE_DEPENDENT_OPTION(BUILD_MODULE_FLASH "Build Flash module" ON "MSVC" OFF)
-CMAKE_DEPENDENT_OPTION(BUILD_MODULE_NEWTEK "Build Newtek module" ON "MSVC" OFF)
+CMAKE_DEPENDENT_OPTION(BUILD_MODULE_NEWTEK "Build Newtek module" ON)
 
 option(USE_SYSTEM_BOOST     "Compile against system boost instead of bundled one" OFF)
 option(USE_SYSTEM_FFMPEG    "Compile against system FFmpeg instead of bundled one" OFF)
