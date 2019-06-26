@@ -53,13 +53,13 @@ void init(core::module_dependencies dependencies)
 		});
 		dependencies.consumer_registry->register_preconfigured_consumer_factory(L"newtek-ivga", create_preconfigured_ivga_consumer);
                 #endif
-                dependencies.consumer_registry->register_consumer_factory(L"NDI Consumer", create_ndi_consumer);
+                dependencies.consumer_registry->register_consumer_factory(L"NDI Consumer", create_ndi_consumer, describe_consumer);
                 dependencies.consumer_registry->register_preconfigured_consumer_factory(L"ndi",
                                                                                 create_preconfigured_ndi_consumer);
 
-                dependencies.producer_registry->register_producer_factory(L"NDI Producer", create_ndi_producer);
+		//dependencies.producer_registry->register_producer_factory(L"NDI Producer", create_ndi_producer);
 
-                dependencies.command_repository->register_command(L"Query Commands", L"NDI LIST", ndi::list_command, 0);
+                //dependencies.command_repository->register_command(L"Query Commands", L"NDI LIST", ndi::list_command, 0);
 
                 bool autoload = caspar::env::properties().get(L"configuration.ndi.auto-load", false);
                 if (autoload)

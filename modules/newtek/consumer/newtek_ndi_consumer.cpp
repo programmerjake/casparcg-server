@@ -49,6 +49,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
     const std::wstring      name_;
     const bool              allow_fields_;
 
+    core::monitor::subject                                                          monitor_subject_;
     core::video_format_desc              format_desc_;
     int                                  channel_index_;
     NDIlib_v3*                           ndi_lib_;
@@ -82,7 +83,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
     // frame_consumer
 
-    void initialize(const core::video_format_desc& format_desc, int channel_index) override
+    void initialize(const core::video_format_desc& format_desc, const core::audio_channel_layout& channel_layout, int channel_index) override
     {
         format_desc_   = format_desc;
         channel_index_ = channel_index;
@@ -166,14 +167,55 @@ struct newtek_ndi_consumer : public core::frame_consumer
         return L"CasparCG" + (instance_no_ ? L" " + boost::lexical_cast<std::wstring>(instance_no_) : L"");
     }
 
+
+    boost::property_tree::wptree info() const override
+    {
+        boost::property_tree::wptree info;
+        info.add(L"type", L"NDI");
+        //info.add(L"key-only", config_.key_only);
+        //info.add(L"device", config_.device_index);
+
+        //if (config_.keyer == configuration::keyer_t::external_separate_device_keyer)
+        //{
+        //    info.add(L"key-device", config_.key_device_index());
+        //}
+
+        //info.add(L"low-latency", config_.latency == configuration::latency_t::low_latency);
+        //info.add(L"embedded-audio", config_.embedded_audio);
+        //info.add(L"presentation-frame-age", presentation_frame_age_millis());
+        //info.add(L"internal-key", config_.internal_key);
+        return info;
+    }
+    
+    int buffer_depth() const override
+    {
+        return 5;
+    }
+
+    int64_t presentation_frame_age_millis() const override
+    {
+        return 0;
+    }
+
     int index() const override { return 900; }
 
     bool has_synchronization_clock() const override { return false; }
+
+    core::monitor::subject& monitor_output()
+    {
+       return monitor_subject_;
+    }
+
+ 
 };
 
 std::atomic<int> newtek_ndi_consumer::instances_(0);
 
+void describe_consumer(core::help_sink& sink, const core::help_repository& repo)
+{}
+
 spl::shared_ptr<core::frame_consumer> create_ndi_consumer(const std::vector<std::wstring>&                  params,
+							  core::interaction_sink*,
                                                           std::vector<spl::shared_ptr<core::video_channel>> channels)
 {
     if (params.size() < 1 || !boost::iequals(params.at(0), L"NDI"))
@@ -184,8 +226,7 @@ spl::shared_ptr<core::frame_consumer> create_ndi_consumer(const std::vector<std:
 }
 
 spl::shared_ptr<core::frame_consumer>
-create_preconfigured_ndi_consumer(const boost::property_tree::wptree&               ptree,
-                                  std::vector<spl::shared_ptr<core::video_channel>> channels)
+create_preconfigured_ndi_consumer(const boost::property_tree::wptree& ptree, core::interaction_sink*, std::vector<spl::shared_ptr<core::video_channel>> channels)
 {
     auto name         = ptree.get(L"name", L"");
     bool allow_fields = ptree.get(L"allow-fields", false);

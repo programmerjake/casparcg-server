@@ -4,7 +4,7 @@ project (newtek)
 set(SOURCES
                 consumer/newtek_ndi_consumer.cpp
 
-                producer/newtek_ndi_producer.cpp
+		#producer/newtek_ndi_producer.cpp
 
                 util/ndi.cpp
 
@@ -16,7 +16,7 @@ set(HEADERS
 
                	consumer/newtek_ndi_consumer.h
 
-		producer/newtek_ndi_producer.h
+		#producer/newtek_ndi_producer.h
 
                 util/ndi.h
 

@@ -78,7 +78,6 @@ struct amcp_command_repository::impl
 	std::map<std::wstring, std::pair<amcp_command_func, int>>	channel_commands;
 
 	impl(
-			const std::vector<spl::shared_ptr<core::video_channel>>& channels,
 			const std::shared_ptr<core::thumbnail_generator>& thumb_gen,
 			const spl::shared_ptr<core::media_info_repository>& media_info_repo,
 			const spl::shared_ptr<core::system_info_provider_repository>& system_info_provider_repo,
@@ -98,8 +97,11 @@ struct amcp_command_repository::impl
 		, ogl_device(ogl_device)
 		, shutdown_server_now(shutdown_server_now)
 	{
+	}
+     void init(const std::vector<spl::shared_ptr<core::video_channel>>& video_channels) 
+	{
 		int index = 0;
-		for (const auto& channel : channels)
+		for (const auto& channel : video_channels)
 		{
 			std::wstring lifecycle_key = L"lock" + boost::lexical_cast<std::wstring>(index);
 			this->channels.push_back(channel_context(channel, lifecycle_key));
@@ -109,7 +111,6 @@ struct amcp_command_repository::impl
 };
 
 amcp_command_repository::amcp_command_repository(
-		const std::vector<spl::shared_ptr<core::video_channel>>& channels,
 		const std::shared_ptr<core::thumbnail_generator>& thumb_gen,
 		const spl::shared_ptr<core::media_info_repository>& media_info_repo,
 		const spl::shared_ptr<core::system_info_provider_repository>& system_info_provider_repo,
@@ -120,7 +121,6 @@ amcp_command_repository::amcp_command_repository(
 		const std::shared_ptr<accelerator::ogl::device>& ogl_device,
 		std::promise<bool>& shutdown_server_now)
 		: impl_(new impl(
-				channels,
 				thumb_gen,
 				media_info_repo,
 				system_info_provider_repo,
@@ -132,7 +132,10 @@ amcp_command_repository::amcp_command_repository(
 				shutdown_server_now))
 {
 }
-
+void amcp_command_repository::init(const std::vector<spl::shared_ptr<core::video_channel>>& channels) 
+{
+     impl_->init(channels); 	
+}
 AMCPCommand::ptr_type amcp_command_repository::create_command(const std::wstring& s, IO::ClientInfoPtr client, std::list<std::wstring>& tokens) const
 {
 	auto& self = *impl_;

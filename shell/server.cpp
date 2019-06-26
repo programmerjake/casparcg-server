@@ -162,12 +162,25 @@ struct server::impl : boost::noncopyable
 		caspar::core::diagnostics::osd::register_sink();
 		diag_subject_->attach_parent(monitor_subject_);
 
+                amcp_command_repo_ = spl::make_shared<amcp::amcp_command_repository>(
+                                thumbnail_generator_,
+                                media_info_repo_,
+                                system_info_provider_repo_,
+                                cg_registry_,
+                                help_repo_,
+                                producer_registry_,
+                                consumer_registry_,
+                                accelerator_.get_ogl_device(),
+                                shutdown_server_now_);
+
 		module_dependencies dependencies(
-				system_info_provider_repo_,
-				cg_registry_,
-				media_info_repo_,
-				producer_registry_,
-				consumer_registry_);
+ 				system_info_provider_repo_,
+ 				cg_registry_,
+ 				media_info_repo_,
+ 				producer_registry_,
+ 				consumer_registry_,
+				amcp_command_repo_);
+		
 
 		initialize_modules(dependencies);
 		core::text::init(dependencies);
@@ -400,17 +413,7 @@ struct server::impl : boost::noncopyable
 
 	void setup_controllers(const boost::property_tree::wptree& pt)
 	{
-		amcp_command_repo_ = spl::make_shared<amcp::amcp_command_repository>(
-				channels_,
-				thumbnail_generator_,
-				media_info_repo_,
-				system_info_provider_repo_,
-				cg_registry_,
-				help_repo_,
-				producer_registry_,
-				consumer_registry_,
-				accelerator_.get_ogl_device(),
-				shutdown_server_now_);
+		amcp_command_repo_->init(channels_);
 		amcp::register_commands(*amcp_command_repo_);
 
 		using boost::property_tree::wptree;
