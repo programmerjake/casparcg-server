@@ -687,7 +687,7 @@ spl::shared_ptr<core::frame_producer> create_producer(
 	{
 		// File
 		file_or_url = probe_stem(env::media_folder() + L"/" + file_or_url, false);
-	} else if (has_invalid_protocol(file_or_url) {
+	} else if (has_invalid_protocol(file_or_url)) {
                 return core::frame_producer::empty();
         }
 

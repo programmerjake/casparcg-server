@@ -37,7 +37,6 @@ class amcp_command_repository : boost::noncopyable
 {
 public:
 	amcp_command_repository(
-			const std::vector<spl::shared_ptr<core::video_channel>>& channels,
 			const std::shared_ptr<core::thumbnail_generator>& thumb_gen,
 			const spl::shared_ptr<core::media_info_repository>& media_info_repo,
 			const spl::shared_ptr<core::system_info_provider_repository>& system_info_provider_repo,
@@ -47,6 +46,7 @@ public:
 			const spl::shared_ptr<const core::frame_consumer_registry>& consumer_registry,
 			const std::shared_ptr<accelerator::ogl::device>& ogl_device,
 			std::promise<bool>& shutdown_server_now);
+     	void init(const std::vector<spl::shared_ptr<core::video_channel>>& channels); 
 
 	AMCPCommand::ptr_type create_command(const std::wstring& s, IO::ClientInfoPtr client, std::list<std::wstring>& tokens) const;
 	AMCPCommand::ptr_type create_channel_command(

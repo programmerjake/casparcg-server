@@ -49,7 +49,7 @@
 
 #include <tbb/parallel_for.h>
 
-#include <ffmpeg/util/av_util.h>
+#include <modules/ffmpeg/producer/util/util.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -253,8 +253,7 @@ struct newtek_ndi_producer : public core::frame_producer
 
 std::atomic<int> newtek_ndi_producer::instances_(0);
 
-spl::shared_ptr<core::frame_producer> create_ndi_producer(const core::frame_producer_dependencies& dependencies,
-                                                          const std::vector<std::wstring>&         params)
+spl::shared_ptr<core::frame_producer> create_ndi_producer(const core::frame_producer_dependencies& dependencies, const std::vector<std::wstring>& params)
 {
     const bool ndi_prefix  = boost::iequals(params.at(0), "[NDI]");
     auto       name_or_url = ndi_prefix ? params.at(1) : params.at(0);
@@ -280,5 +279,9 @@ spl::shared_ptr<core::frame_producer> create_ndi_producer(const core::frame_prod
     auto producer = spl::make_shared<newtek_ndi_producer>(
         dependencies.frame_factory, dependencies.format_desc, name_or_url, low_bandwidth);
     return core::create_destroy_proxy(std::move(producer));
+}
+void describe_consumer(core::help_sink& sink, const core::help_repository& repo)
+{
+
 }
 }} // namespace caspar::newtek
