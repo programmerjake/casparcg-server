@@ -25,9 +25,12 @@
 #include "newtek_ndi_consumer.h"
 
 #include <core/consumer/frame_consumer.h>
+#include <core/frame/audio_channel_layout.h>
 #include <core/frame/frame.h>
 #include <core/mixer/audio/audio_util.h>
 #include <core/video_format.h>
+#include <core/monitor/monitor.h>
+
 
 #include <common/assert.h>
 #include <common/diagnostics/graph.h>
@@ -49,12 +52,14 @@ struct newtek_ndi_consumer : public core::frame_consumer
     const std::wstring      name_;
     const bool              allow_fields_;
 
-    core::monitor::subject                                                          monitor_subject_;
+    core::monitor::subject               monitor_subject_;
     core::video_format_desc              format_desc_;
+    core::audio_channel_layout                      channel_layout_ = core::audio_channel_layout::invalid();
+
     int                                  channel_index_;
     NDIlib_v3*                           ndi_lib_;
     NDIlib_video_frame_v2_t              ndi_video_frame_;
-    NDIlib_audio_frame_interleaved_32s_t ndi_audio_frame_;
+    NDIlib_audio_frame_interleaved_16s_t ndi_audio_frame_ = { 0 };
     std::shared_ptr<uint8_t>             field_data_;
     spl::shared_ptr<diagnostics::graph>  graph_;
     caspar::timer                        tick_timer_;
@@ -87,6 +92,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
     {
         format_desc_   = format_desc;
         channel_index_ = channel_index;
+	channel_layout_ = channel_layout;
 
         NDIlib_send_create_t NDI_send_create_desc;
 
@@ -112,9 +118,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
                               std::default_delete<uint8_t[]>());
             ndi_video_frame_.p_data = field_data_.get();
         }
-
+	
+	ndi_audio_frame_.reference_level = 0;
         ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
-        ndi_audio_frame_.no_channels = format_desc_.audio_channels;
+        ndi_audio_frame_.no_channels = channel_layout_.num_channels;
         ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
 
         graph_->set_text(print());
@@ -128,11 +135,17 @@ struct newtek_ndi_consumer : public core::frame_consumer
         graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
         tick_timer_.restart();
         frame_timer_.restart();
-        auto audio_data             = frame.audio_data();
-        int  audio_data_size        = static_cast<int>(audio_data.size());
-        ndi_audio_frame_.no_samples = audio_data_size / format_desc_.audio_channels;
-        ndi_audio_frame_.p_data     = const_cast<int*>(audio_data.data());
-        ndi_lib_->NDIlib_util_send_send_audio_interleaved_32s(*ndi_send_instance_, &ndi_audio_frame_);
+        //auto audio_data             = frame.audio_data();
+        //int  audio_data_size        = static_cast<int>(audio_data.size());
+        //ndi_audio_frame_.no_samples = audio_data_size / format_desc_.audio_channels;
+        //ndi_audio_frame_.p_data     = const_cast<int*>(audio_data.data());
+        //ndi_lib_->NDIlib_util_send_send_audio_interleaved_32s(*ndi_send_instance_, &ndi_audio_frame_);
+        auto audio_buffer = core::audio_32_to_16(frame.audio_data());
+
+        ndi_audio_frame_.p_data = audio_buffer.data();
+        ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / channel_layout_.num_channels);
+	ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
+
         if (format_desc_.field_count == 2 && allow_fields_) {
             ndi_video_frame_.frame_format_type =
                 (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
@@ -171,19 +184,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
     boost::property_tree::wptree info() const override
     {
         boost::property_tree::wptree info;
-        info.add(L"type", L"NDI");
-        //info.add(L"key-only", config_.key_only);
-        //info.add(L"device", config_.device_index);
-
-        //if (config_.keyer == configuration::keyer_t::external_separate_device_keyer)
-        //{
-        //    info.add(L"key-device", config_.key_device_index());
-        //}
-
-        //info.add(L"low-latency", config_.latency == configuration::latency_t::low_latency);
-        //info.add(L"embedded-audio", config_.embedded_audio);
-        //info.add(L"presentation-frame-age", presentation_frame_age_millis());
-        //info.add(L"internal-key", config_.internal_key);
+        info.add(L"type", L"NDI Consumer");
         return info;
     }
     
