@@ -132,7 +132,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
             if (format_desc_.field_count == 2 && allow_fields_) {
                 ndi_video_frame_.yres /= 2;
-                ndi_video_frame_.frame_rate_N /= 2;
+                //ndi_video_frame_.frame_rate_N /= 2;
                 ndi_video_frame_.picture_aspect_ratio = format_desc_.width * 1.0f / format_desc_.height;
                 field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
                                 std::default_delete<uint8_t[]>());
