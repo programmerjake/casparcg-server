@@ -131,10 +131,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
             if (format_desc_.field_count == 2 && allow_fields_) {
                 //ndi_video_frame_.yres /= 2;
                 //ndi_video_frame_.frame_rate_N /= 2;
-                ndi_video_frame_.picture_aspect_ratio = format_desc_.width * 1.0f / format_desc_.height;
-                field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
-                                std::default_delete<uint8_t[]>());
-                ndi_video_frame_.p_data = field_data_.get();
+                //ndi_video_frame_.picture_aspect_ratio = format_desc_.width * 1.0f / format_desc_.height;
+                //field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
+                 //               std::default_delete<uint8_t[]>());
+                //ndi_video_frame_.p_data = field_data_.get();
             }
 
             ndi_audio_frame_.reference_level = 0;
@@ -154,16 +154,16 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
 
             if (format_desc_.field_count == 2 && allow_fields_) {
-                ndi_video_frame_.frame_format_type =
-                   (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
-                for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
-                    std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
-                                frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
-                                format_desc_.width * 4);
-                }
-            } else {
+                ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_interleaved;
+                   //(frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
+                //for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
+                //    std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
+                //                frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
+                //                format_desc_.width * 4);
+                //}
+            }// else {
                 ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data(0).begin());
-            }
+            //}
             ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
             //ndi_lib_->NDIlib_send_send_video_v2(*ndi_send_instance_, &ndi_video_frame_);
             frame_no_++;
