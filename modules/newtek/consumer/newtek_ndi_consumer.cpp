@@ -54,7 +54,9 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
     core::monitor::subject               monitor_subject_;
     core::video_format_desc              format_desc_;
-    core::audio_channel_layout                      channel_layout_ = core::audio_channel_layout::invalid();
+    core::audio_channel_layout           channel_layout_ = core::audio_channel_layout::invalid();
+    core::audio_channel_layout						out_channel_layout_;
+	std::unique_ptr<core::audio_channel_remapper>	channel_remapper_;
 
     int                                  channel_index_;
     NDIlib_v3*                           ndi_lib_;
@@ -69,12 +71,13 @@ struct newtek_ndi_consumer : public core::frame_consumer
     std::unique_ptr<NDIlib_send_instance_t, std::function<void(NDIlib_send_instance_t*)>> ndi_send_instance_;
 
   public:
-    newtek_ndi_consumer(std::wstring name, bool allow_fields)
+    newtek_ndi_consumer(std::wstring name, bool allow_fields, const core::audio_channel_layout& out_channel_layout)
         : name_(!name.empty() ? name : default_ndi_name())
         , instance_no_(instances_++)
         , frame_no_(0)
         , allow_fields_(allow_fields)
         , channel_index_(0)
+        , out_channel_layout_(out_channel_layout)
     {
         ndi_lib_ = ndi::load_library();
         graph_->set_text(print());
@@ -92,7 +95,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
     {
         format_desc_   = format_desc;
         channel_index_ = channel_index;
-	channel_layout_ = channel_layout;
+	    channel_layout_ = channel_layout;
+        out_channel_layout_ = get_adjusted_layout(channel_layout_);
+
+        channel_remapper_.reset(new core::audio_channel_remapper(channel_layout_, out_channel_layout_));
 
         NDIlib_send_create_t NDI_send_create_desc;
 
@@ -119,9 +125,9 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_video_frame_.p_data = field_data_.get();
         }
 	
-	ndi_audio_frame_.reference_level = 0;
+	    ndi_audio_frame_.reference_level = 0;
         ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
-        ndi_audio_frame_.no_channels = channel_layout_.num_channels;
+        ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
         ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
 
         graph_->set_text(print());
@@ -144,7 +150,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
         ndi_audio_frame_.p_data = audio_buffer.data();
         ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / channel_layout_.num_channels);
-	ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
+	    ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
 
         if (format_desc_.field_count == 2 && allow_fields_) {
             ndi_video_frame_.frame_format_type =
@@ -206,6 +212,18 @@ struct newtek_ndi_consumer : public core::frame_consumer
     {
        return monitor_subject_;
     }
+
+    core::audio_channel_layout get_adjusted_layout(const core::audio_channel_layout& in_layout) const
+	{
+		auto adjusted = out_channel_layout_ == core::audio_channel_layout::invalid() ? in_layout : out_channel_layout_;
+
+		if (adjusted.num_channels == 1) // Duplicate mono-signal into both left and right.
+		{
+			adjusted.num_channels = 2;
+			adjusted.channel_order.push_back(adjusted.channel_order.at(0)); // Usually FC -> FC FC
+		}
+		return adjusted;
+	}
 
  
 };
