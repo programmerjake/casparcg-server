@@ -277,6 +277,9 @@ spl::shared_ptr<core::frame_consumer> create_ndi_consumer(const std::vector<std:
     CASPAR_LOG(info) << L"create_ndi_consumer";
     std::wstring name         = get_param(L"NAME", params, L"");
     bool         allow_fields = contains_param(L"ALLOW_FIELDS", params);
+
+    std::wstring failover = get_param(L"FAILOVER_SOURCE", params, L"");
+    std::wstring groups = get_param(L"GROUPS", params, L"");
     
     auto out_channel_layout = core::audio_channel_layout::invalid();
     auto channel_layout = get_param(L"CHANNEL_LAYOUT", params);
@@ -291,7 +294,7 @@ spl::shared_ptr<core::frame_consumer> create_ndi_consumer(const std::vector<std:
 
 		core::audio_channel_layout out_channel_layout = *found_layout;
 	}
-    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields, out_channel_layout);
+    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields, out_channel_layout, failover, groups);
 }
 
 spl::shared_ptr<core::frame_consumer>
