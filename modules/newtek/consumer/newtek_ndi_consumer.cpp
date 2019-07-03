@@ -315,8 +315,8 @@ create_preconfigured_ndi_consumer(const boost::property_tree::wptree& ptree, cor
 
     auto channel_layout = ptree.get_optional<std::wstring>(L"channel-layout");
 
-    auto failover = ptree.get_optional<std::wstring>(L"failover-source");
-    auto groups = ptree.get_optional<std::wstring>(L"groups");
+    std::wstring failover = ptree.get(L"failover-source", L"");
+    std::wstring groups = ptree.get(L"groups", L"");
     auto out_channel_layout = core::audio_channel_layout::invalid();
 
     CASPAR_LOG(info) << L"create_preconfigured_ndi_consumer";
