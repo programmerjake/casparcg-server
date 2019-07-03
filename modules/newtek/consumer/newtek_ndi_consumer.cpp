@@ -153,21 +153,9 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
 
 
-            switch (format_desc_.field_mode) {
-                case core::field_mode::progressive:
-                    ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_progressive;
-                    break;
-                case core::field_mode::upper:
-                    ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_field_0;
-                    break;
-                case core::field_mode::lower:
-                    ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_field_1;
-                    break;
-}
-
             if (format_desc_.field_count == 2 && allow_fields_) {
-                //ndi_video_frame_.frame_format_type =
-                //    (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
+                ndi_video_frame_.frame_format_type =
+                   (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
                 for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
                     std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
                                 frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
