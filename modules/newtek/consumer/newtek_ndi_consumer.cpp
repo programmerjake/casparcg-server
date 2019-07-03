@@ -51,6 +51,8 @@ struct newtek_ndi_consumer : public core::frame_consumer
     const int               instance_no_;
     const std::wstring      name_;
     const bool              allow_fields_;
+    const std::wstring      failover_;
+    const std::wstring      groups_;
 
     core::monitor::subject               monitor_subject_;
     core::video_format_desc              format_desc_;
@@ -72,7 +74,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
     std::unique_ptr<NDIlib_send_instance_t, std::function<void(NDIlib_send_instance_t*)>> ndi_send_instance_;
 
   public:
-    newtek_ndi_consumer(std::wstring name, bool allow_fields, const core::audio_channel_layout& out_channel_layout)
+    newtek_ndi_consumer(std::wstring name, bool allow_fields, const core::audio_channel_layout& out_channel_layout, std::wstring failover, std::wstring groups)
         : name_(!name.empty() ? name : default_ndi_name())
         , instance_no_(instances_++)
         , frame_no_(0)
@@ -80,13 +82,15 @@ struct newtek_ndi_consumer : public core::frame_consumer
         , channel_index_(0)
         , out_channel_layout_(out_channel_layout)
         , executor_(print())
+        , failover_(failover)
+        , groups_ (groups)
     {
         ndi_lib_ = ndi::load_library();
-        graph_->set_text(print());
-        graph_->set_color("frame-time", diagnostics::color(0.5f, 1.0f, 0.2f));
-        graph_->set_color("tick-time", diagnostics::color(0.0f, 0.6f, 0.9f));
-        graph_->set_color("dropped-frame", diagnostics::color(0.3f, 0.6f, 0.3f));
-        diagnostics::register_graph(graph_);
+        //graph_->set_text(print());
+        //graph_->set_color("frame-time", diagnostics::color(0.5f, 1.0f, 0.2f));
+        //graph_->set_color("tick-time", diagnostics::color(0.0f, 0.6f, 0.9f));
+        //graph_->set_color("dropped-frame", diagnostics::color(0.3f, 0.6f, 0.3f));
+        //diagnostics::register_graph(graph_);
     }
 
     ~newtek_ndi_consumer() {}
@@ -112,7 +116,14 @@ struct newtek_ndi_consumer : public core::frame_consumer
         ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
                               [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
 
-        graph_->set_text(print());
+        if (!failover_.empty()) {
+            auto tmp_failover = u8(failover_);
+            NDIlib_source_t NDI_failover_source {};
+            NDI_failover_source.p_ndi_name = tmp_failover.c_str();
+            ndi_lib_->NDIlib_send_set_failover(&ndi_send_instance_, &NDI_failover_source); 
+        }
+
+        //graph_->set_text(print());
         // CASPAR_VERIFY(ndi_send_instance_);
     }
 
@@ -140,7 +151,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_audio_frame_.reference_level = 0;
             ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
 
-            graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
+            //graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
             tick_timer_.restart();
             frame_timer_.restart();
 
@@ -167,7 +178,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
             //ndi_lib_->NDIlib_send_send_video_v2(*ndi_send_instance_, &ndi_video_frame_);
             frame_no_++;
-            graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
+            //graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
             return true;
         });
     }
@@ -179,7 +190,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
         if (executor_.size() > 0 || executor_.is_currently_in_task())
         {
-            graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
+            //graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
 
             return make_ready_future(true);
         }
@@ -210,6 +221,8 @@ struct newtek_ndi_consumer : public core::frame_consumer
     {
         boost::property_tree::wptree info;
         info.add(L"type", L"NDI Consumer");
+        info.add(L"name", name_);
+        info.add(L"failover-source",failover_);
         return info;
     }
     
@@ -289,6 +302,8 @@ create_preconfigured_ndi_consumer(const boost::property_tree::wptree& ptree, cor
 
     auto channel_layout = ptree.get_optional<std::wstring>(L"channel-layout");
 
+    auto failover = ptree.get_optional<std::wstring>(L"failover-source");
+    auto groups = ptree.get_optional<std::wstring>(L"groups");
     auto out_channel_layout = core::audio_channel_layout::invalid();
 
     CASPAR_LOG(info) << L"create_preconfigured_ndi_consumer";
@@ -306,7 +321,7 @@ create_preconfigured_ndi_consumer(const boost::property_tree::wptree& ptree, cor
 		auto out_channel_layout = *found_layout;
 	}
 
-    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields, out_channel_layout);
+    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields, out_channel_layout, failover, groups);
 }
 
 }} // namespace caspar::newtek
