@@ -120,8 +120,6 @@ struct newtek_ndi_consumer : public core::frame_consumer
     {
         return executor_.begin_invoke([=]() -> bool
         {
-            CASPAR_VERIFY(format_desc_.height * format_desc_.width * 4 == frame.image_data(0).size());
-
             ndi_video_frame_.xres                 = format_desc_.width;
             ndi_video_frame_.yres                 = format_desc_.height;
             ndi_video_frame_.frame_rate_N         = format_desc_.framerate.numerator();
@@ -131,7 +129,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
 
             if (format_desc_.field_count == 2 && allow_fields_) {
-                ndi_video_frame_.yres /= 2;
+                //ndi_video_frame_.yres /= 2;
                 //ndi_video_frame_.frame_rate_N /= 2;
                 ndi_video_frame_.picture_aspect_ratio = format_desc_.width * 1.0f / format_desc_.height;
                 field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
@@ -154,9 +152,22 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
             ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
 
+
+            switch (format_desc_.field_mode) {
+                case core::field_mode::progressive:
+                    ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_progressive;
+                    break;
+                case core::field_mode::upper:
+                    ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_field_0;
+                    break;
+                case core::field_mode::lower:
+                    ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_field_1;
+                    break;
+}
+
             if (format_desc_.field_count == 2 && allow_fields_) {
-                ndi_video_frame_.frame_format_type =
-                    (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
+                //ndi_video_frame_.frame_format_type =
+                //    (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
                 for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
                     std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
                                 frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
