@@ -60,6 +60,8 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
     int                                  channel_index_;
     NDIlib_v3*                           ndi_lib_;
+    NDIlib_video_frame_v2_t              ndi_video_frame_;
+    NDIlib_audio_frame_interleaved_16s_t ndi_audio_frame_ = { 0 };
     std::shared_ptr<uint8_t>             field_data_;
     spl::shared_ptr<diagnostics::graph>  graph_;
     executor                             executor_;
@@ -118,59 +120,61 @@ struct newtek_ndi_consumer : public core::frame_consumer
     {
         return executor_.begin_invoke([=]() -> bool
         {
-            graph_->set_value("ndi-connections", ndi_lib_->NDIlib_send_get_no_connections(*ndi_send_instance_, 0));
+            CASPAR_VERIFY(format_desc_.height * format_desc_.width * 4 == frame.image_data(0).size());
+
+            ndi_video_frame_.xres                 = format_desc_.width;
+            ndi_video_frame_.yres                 = format_desc_.height;
+            ndi_video_frame_.frame_rate_N         = format_desc_.framerate.numerator();
+            ndi_video_frame_.frame_rate_D         = format_desc_.framerate.denominator();
+            ndi_video_frame_.FourCC               = NDIlib_FourCC_type_BGRA;
+            ndi_video_frame_.line_stride_in_bytes = format_desc_.width * 4;
+            ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
+
+            if (format_desc_.field_count == 2 && allow_fields_) {
+                ndi_video_frame_.yres /= 2;
+                ndi_video_frame_.frame_rate_N /= 2;
+                ndi_video_frame_.picture_aspect_ratio = format_desc_.width * 1.0f / format_desc_.height;
+                field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
+                                std::default_delete<uint8_t[]>());
+                ndi_video_frame_.p_data = field_data_.get();
+            }
+
+            ndi_audio_frame_.reference_level = 0;
+            ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
 
             graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
             tick_timer_.restart();
             frame_timer_.restart();
 
-            // AUDIO
-            auto audio_buffer = core::audio_32_to_16(frame.audio_data());
+            auto audio_buffer = core::audio_32_to_16(channel_remapper_->mix_and_rearrange(frame.audio_data()));
 
-            NDIlib_audio_frame_interleaved_16s_t audio_frame = { 0 };
-            audio_frame.reference_level = 0;
-            audio_frame.sample_rate = format_desc_.audio_sample_rate;
-            audio_frame.no_channels = channel_layout_.num_channels;
-            audio_frame.timecode = NDIlib_send_timecode_synthesize;
-            audio_frame.p_data = audio_buffer.data();
-            audio_frame.no_samples = static_cast<int>(audio_buffer.size() / channel_layout_.num_channels);
-            ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &audio_frame);
+            ndi_audio_frame_.p_data = audio_buffer.data();
+            ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
+            ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
+            ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
+            ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
 
-            // VIDEO
-            NDIlib_video_frame_v2_t video_frame = { 0 };
-            video_frame.xres = format_desc_.width;
-            video_frame.yres = format_desc_.height;
-            video_frame.picture_aspect_ratio = static_cast<float>(format_desc_.square_width) / static_cast<float>(format_desc_.square_height);
-            video_frame.frame_rate_N = format_desc_.framerate.numerator();
-            video_frame.frame_rate_D = format_desc_.framerate.denominator();
-            video_frame.timecode = NDIlib_send_timecode_synthesize;
-
-            switch (format_desc_.field_mode) {
-                case core::field_mode::progressive:
-                    video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
-                    break;
-                case core::field_mode::upper:
-                    video_frame.frame_format_type = NDIlib_frame_format_type_field_0;
-                    break;
-                case core::field_mode::lower:
-                    video_frame.frame_format_type = NDIlib_frame_format_type_field_1;
-                    break;
+            if (format_desc_.field_count == 2 && allow_fields_) {
+                ndi_video_frame_.frame_format_type =
+                    (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
+                for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
+                    std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
+                                frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
+                                format_desc_.width * 4);
+                }
+            } else {
+                ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data(0).begin());
             }
-
-            video_frame.p_data = (uint8_t*)frame.image_data().begin();
-            video_frame.FourCC = NDIlib_FourCC_type_BGRA;
-            video_frame.line_stride_in_bytes = format_desc_.square_width * 4;
-
-            ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &video_frame);
-
-            graph_->set_text(print());
+            ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
+            //ndi_lib_->NDIlib_send_send_video_v2(*ndi_send_instance_, &ndi_video_frame_);
+            frame_no_++;
             graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
             return true;
         });
     }
 
  
-	virtual std::future<bool> send(core::const_frame frame) override
+    virtual std::future<bool> send(core::const_frame frame) override
     {
         CASPAR_VERIFY(format_desc_.height * format_desc_.width * 4 == frame.image_data().size());
 
