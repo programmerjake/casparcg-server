@@ -110,6 +110,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
         auto tmp_name                   = u8(name_);
         NDI_send_create_desc.p_ndi_name = tmp_name.c_str();
+        if (!groups_.empty()) {
+            auto tmp_groups             = u8(groups_);
+            NDI_send_create_desc.p_groups = tmp_groups.c_str();
+        }
         NDI_send_create_desc.clock_audio = false;
         NDI_send_create_desc.clock_video = true;
 
@@ -222,7 +226,13 @@ struct newtek_ndi_consumer : public core::frame_consumer
         boost::property_tree::wptree info;
         info.add(L"type", L"NDI Consumer");
         info.add(L"name", name_);
-        info.add(L"failover-source",failover_);
+        if (!failover_.empty()) {
+            info.add(L"failover-source",failover_);
+        }
+        if (!groups_.empty()) {
+            info.add(L"groups", groups_);
+        }
+        info.add(L"connected-clients", ndi_lib_->NDIlib_send_get_no_connections(*ndi_send_instance_, 0));
         return info;
     }
     
