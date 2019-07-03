@@ -64,6 +64,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
     NDIlib_audio_frame_interleaved_16s_t ndi_audio_frame_ = { 0 };
     std::shared_ptr<uint8_t>             field_data_;
     spl::shared_ptr<diagnostics::graph>  graph_;
+    executor                             executor_;
     caspar::timer                        tick_timer_;
     caspar::timer                        frame_timer_;
     int                                  frame_no_;
@@ -78,6 +79,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
         , allow_fields_(allow_fields)
         , channel_index_(0)
         , out_channel_layout_(out_channel_layout)
+        , executor_(print())
     {
         ndi_lib_ = ndi::load_library();
         graph_->set_text(print());
@@ -104,73 +106,100 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
         auto tmp_name                   = u8(name_);
         NDI_send_create_desc.p_ndi_name = tmp_name.c_str();
+        NDI_send_create_desc.clock_audio = false;
+        NDI_send_create_desc.clock_video = true;
 
         ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
                               [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
-
-        ndi_video_frame_.xres                 = format_desc.width;
-        ndi_video_frame_.yres                 = format_desc.height;
-        ndi_video_frame_.frame_rate_N         = format_desc.framerate.numerator();
-        ndi_video_frame_.frame_rate_D         = format_desc.framerate.denominator();
-        ndi_video_frame_.FourCC               = NDIlib_FourCC_type_BGRA;
-        ndi_video_frame_.line_stride_in_bytes = format_desc.width * 4;
-        ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
-
-        if (format_desc.field_count == 2 && allow_fields_) {
-            ndi_video_frame_.yres /= 2;
-            ndi_video_frame_.frame_rate_N /= 2;
-            ndi_video_frame_.picture_aspect_ratio = format_desc.width * 1.0f / format_desc.height;
-            field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
-                              std::default_delete<uint8_t[]>());
-            ndi_video_frame_.p_data = field_data_.get();
-        }
-	
-	ndi_audio_frame_.reference_level = 0;
-        ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
 
         graph_->set_text(print());
         // CASPAR_VERIFY(ndi_send_instance_);
     }
 
-    std::future<bool> send(core::const_frame frame) override
+    std::future<bool> schedule_send(core::const_frame frame)
     {
-        CASPAR_VERIFY(format_desc_.height * format_desc_.width * 4 == frame.image_data(0).size());
+        return executor_.begin_invoke([=]() -> bool
+        {
+            ndi_video_frame_.xres                 = format_desc_.width;
+            ndi_video_frame_.yres                 = format_desc_.height;
+            ndi_video_frame_.frame_rate_N         = format_desc_.framerate.numerator();
+            ndi_video_frame_.frame_rate_D         = format_desc_.framerate.denominator();
+            ndi_video_frame_.FourCC               = NDIlib_FourCC_type_BGRA;
+            ndi_video_frame_.line_stride_in_bytes = format_desc_.width * 4;
+            //ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
 
-        graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
-        tick_timer_.restart();
-        frame_timer_.restart();
-        //auto audio_data             = frame.audio_data();
-        //int  audio_data_size        = static_cast<int>(audio_data.size());
-        //ndi_audio_frame_.no_samples = audio_data_size / format_desc_.audio_channels;
-        //ndi_audio_frame_.p_data     = const_cast<int*>(audio_data.data());
-        //ndi_lib_->NDIlib_util_send_send_audio_interleaved_32s(*ndi_send_instance_, &ndi_audio_frame_);
-	//auto remapped = channel_remapper_->mix_and_rearrange(frame.audio_data());
-        auto audio_buffer = core::audio_32_to_16(channel_remapper_->mix_and_rearrange(frame.audio_data()));
-        //auto audio_buffer = core::audio_32_to_16(frame.audio_data());
+            //if (format_desc_.field_count == 2 && allow_fields_) {
+            //    ndi_video_frame_.yres /= 2;
+            //    ndi_video_frame_.frame_rate_N /= 2;
+            //    ndi_video_frame_.picture_aspect_ratio = format_desc_.width * 1.0f / format_desc_.height;
+            //    field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
+            //                    std::default_delete<uint8_t[]>());
+            //    ndi_video_frame_.p_data = field_data_.get();
+            //}
 
-        ndi_audio_frame_.p_data = audio_buffer.data();
-        ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
-        ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
-        ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
-        ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
+            switch (format_desc_.field_mode) {
+						case core::field_mode::progressive:
+							ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_progressive;
+							break;
+						case core::field_mode::upper:
+							ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_field_0;
+							break;
+						case core::field_mode::lower:
+							ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_field_1;
+							break;
+					}
 
-        if (format_desc_.field_count == 2 && allow_fields_) {
-            ndi_video_frame_.frame_format_type =
-                (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
-            for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
-                std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
-                            frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
-                            format_desc_.width * 4);
-            }
-        } else {
-            ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data(0).begin());
+	
+            ndi_audio_frame_.reference_level = 0;
+            ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
+
+            graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
+            tick_timer_.restart();
+            frame_timer_.restart();
+
+            auto audio_buffer = core::audio_32_to_16(channel_remapper_->mix_and_rearrange(frame.audio_data()));
+
+            ndi_audio_frame_.p_data = audio_buffer.data();
+            ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
+            ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
+            ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
+            ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
+
+            //if (format_desc_.field_count == 2 && allow_fields_) {
+            //    ndi_video_frame_.frame_format_type =
+            //        (frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
+            //    for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
+            //        std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
+            //                    frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
+            //                    format_desc_.width * 4);
+            //    }
+            //} else {
+                ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data(0).begin());
+            //}
+            ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
+            //ndi_lib_->NDIlib_send_send_video_v2(*ndi_send_instance_, &ndi_video_frame_);
+            frame_no_++;
+            graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
+            return true;
+        });
+    }
+
+ 
+	virtual std::future<bool> send(core::const_frame frame) override
+    {
+        CASPAR_VERIFY(format_desc_.height * format_desc_.width * 4 == frame.image_data().size());
+
+        if (executor_.size() > 0 || executor_.is_currently_in_task())
+        {
+            graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
+
+            return make_ready_future(true);
         }
-        ndi_lib_->NDIlib_send_send_video_v2(*ndi_send_instance_, &ndi_video_frame_);
-        frame_no_++;
-        graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
+
+        schedule_send(std::move(frame));
 
         return make_ready_future(true);
-    }
+    }   
 
     std::wstring print() const override
     {
