@@ -55,8 +55,8 @@ struct newtek_ndi_consumer : public core::frame_consumer
     core::monitor::subject               monitor_subject_;
     core::video_format_desc              format_desc_;
     core::audio_channel_layout           channel_layout_ = core::audio_channel_layout::invalid();
-    core::audio_channel_layout						out_channel_layout_;
-	std::unique_ptr<core::audio_channel_remapper>	channel_remapper_;
+    core::audio_channel_layout           out_channel_layout_ = core::audio_channel_layout::invalid();
+    std::unique_ptr<core::audio_channel_remapper>	channel_remapper_;
 
     int                                  channel_index_;
     NDIlib_v3*                           ndi_lib_;
@@ -95,7 +95,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
     {
         format_desc_   = format_desc;
         channel_index_ = channel_index;
-	    channel_layout_ = channel_layout;
+        channel_layout_ = channel_layout;
         out_channel_layout_ = get_adjusted_layout(channel_layout_);
 
         channel_remapper_.reset(new core::audio_channel_remapper(channel_layout_, out_channel_layout_));
@@ -125,9 +125,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_video_frame_.p_data = field_data_.get();
         }
 	
-	    ndi_audio_frame_.reference_level = 0;
-        ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
-        ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
+	ndi_audio_frame_.reference_level = 0;
         ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
 
         graph_->set_text(print());
@@ -146,11 +144,15 @@ struct newtek_ndi_consumer : public core::frame_consumer
         //ndi_audio_frame_.no_samples = audio_data_size / format_desc_.audio_channels;
         //ndi_audio_frame_.p_data     = const_cast<int*>(audio_data.data());
         //ndi_lib_->NDIlib_util_send_send_audio_interleaved_32s(*ndi_send_instance_, &ndi_audio_frame_);
-        auto audio_buffer = core::audio_32_to_16(frame.audio_data());
+	//auto remapped = channel_remapper_->mix_and_rearrange(frame.audio_data());
+        auto audio_buffer = core::audio_32_to_16(channel_remapper_->mix_and_rearrange(frame.audio_data()));
+        //auto audio_buffer = core::audio_32_to_16(frame.audio_data());
 
         ndi_audio_frame_.p_data = audio_buffer.data();
-        ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / channel_layout_.num_channels);
-	    ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
+        ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
+        ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
+        ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
+        ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
 
         if (format_desc_.field_count == 2 && allow_fields_) {
             ndi_video_frame_.frame_format_type =
@@ -221,7 +223,9 @@ struct newtek_ndi_consumer : public core::frame_consumer
 		{
 			adjusted.num_channels = 2;
 			adjusted.channel_order.push_back(adjusted.channel_order.at(0)); // Usually FC -> FC FC
-		}
+		} else {
+                    adjusted.num_channels = 4;
+                }
 		return adjusted;
 	}
 
@@ -239,12 +243,15 @@ spl::shared_ptr<core::frame_consumer> create_ndi_consumer(const std::vector<std:
 {
     if (params.size() < 1 || !boost::iequals(params.at(0), L"NDI"))
         return core::frame_consumer::empty();
+
+    CASPAR_LOG(info) << L"create_ndi_consumer";
     std::wstring name         = get_param(L"NAME", params, L"");
     bool         allow_fields = contains_param(L"ALLOW_FIELDS", params);
     
     auto out_channel_layout = core::audio_channel_layout::invalid();
     auto channel_layout = get_param(L"CHANNEL_LAYOUT", params);
 
+    CASPAR_LOG(info) <<L"channel_layout" << channel_layout;
 	if (!channel_layout.empty())
 	{
 		auto found_layout = core::audio_channel_layout_repository::get_default()->get_layout(channel_layout);
@@ -263,9 +270,12 @@ create_preconfigured_ndi_consumer(const boost::property_tree::wptree& ptree, cor
     auto name         = ptree.get(L"name", L"");
     bool allow_fields = ptree.get(L"allow-fields", true);
 
-    	auto channel_layout = ptree.get_optional<std::wstring>(L"channel-layout");
+    auto channel_layout = ptree.get_optional<std::wstring>(L"channel-layout");
 
     auto out_channel_layout = core::audio_channel_layout::invalid();
+
+    CASPAR_LOG(info) << L"create_preconfigured_ndi_consumer";
+    CASPAR_LOG(info) << L"channel_layout" << *channel_layout;
 
 	if (channel_layout)
 	{
