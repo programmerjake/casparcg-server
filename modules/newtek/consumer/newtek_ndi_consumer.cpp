@@ -241,15 +241,45 @@ spl::shared_ptr<core::frame_consumer> create_ndi_consumer(const std::vector<std:
         return core::frame_consumer::empty();
     std::wstring name         = get_param(L"NAME", params, L"");
     bool         allow_fields = contains_param(L"ALLOW_FIELDS", params);
-    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields);
+    
+    auto out_channel_layout = core::audio_channel_layout::invalid();
+    auto channel_layout = get_param(L"CHANNEL_LAYOUT", params);
+
+	if (!channel_layout.empty())
+	{
+		auto found_layout = core::audio_channel_layout_repository::get_default()->get_layout(channel_layout);
+
+		if (!found_layout)
+			CASPAR_THROW_EXCEPTION(user_error() << msg_info(L"Channel layout " + channel_layout + L" not found."));
+
+		core::audio_channel_layout out_channel_layout = *found_layout;
+	}
+    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields, out_channel_layout);
 }
 
 spl::shared_ptr<core::frame_consumer>
 create_preconfigured_ndi_consumer(const boost::property_tree::wptree& ptree, core::interaction_sink*, std::vector<spl::shared_ptr<core::video_channel>> channels)
 {
     auto name         = ptree.get(L"name", L"");
-    bool allow_fields = ptree.get(L"allow-fields", false);
-    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields);
+    bool allow_fields = ptree.get(L"allow-fields", true);
+
+    	auto channel_layout = ptree.get_optional<std::wstring>(L"channel-layout");
+
+    auto out_channel_layout = core::audio_channel_layout::invalid();
+
+	if (channel_layout)
+	{
+		CASPAR_SCOPED_CONTEXT_MSG("/channel-layout")
+
+		auto found_layout = core::audio_channel_layout_repository::get_default()->get_layout(*channel_layout);
+
+		if (!found_layout)
+			CASPAR_THROW_EXCEPTION(user_error() << msg_info(L"Channel layout " + *channel_layout + L" not found."));
+
+		auto out_channel_layout = *found_layout;
+	}
+
+    return spl::make_shared<newtek_ndi_consumer>(name, allow_fields, out_channel_layout);
 }
 
 }} // namespace caspar::newtek
