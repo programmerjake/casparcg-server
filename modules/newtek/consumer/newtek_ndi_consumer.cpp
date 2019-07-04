@@ -124,7 +124,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
             auto tmp_failover = u8(failover_);
             NDIlib_source_t NDI_failover_source {};
             NDI_failover_source.p_ndi_name = tmp_failover.c_str();
-            ndi_lib_->NDIlib_send_set_failover(&ndi_send_instance_, &NDI_failover_source); 
+            ndi_lib_->NDIlib_send_set_failover(*ndi_send_instance_, &NDI_failover_source); 
         }
 
         //graph_->set_text(print());
