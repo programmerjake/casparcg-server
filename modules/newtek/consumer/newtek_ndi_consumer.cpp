@@ -63,7 +63,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
     int                                  channel_index_;
     NDIlib_v3*                           ndi_lib_;
     NDIlib_video_frame_v2_t              ndi_video_frame_;
-    NDIlib_audio_frame_interleaved_16s_t ndi_audio_frame_ = { 0 };
+    NDIlib_audio_frame_interleaved_32s_t ndi_audio_frame_ = { 0 };
     std::shared_ptr<uint8_t>             field_data_;
     spl::shared_ptr<diagnostics::graph>  graph_;
     executor                             executor_;
@@ -159,13 +159,13 @@ struct newtek_ndi_consumer : public core::frame_consumer
             tick_timer_.restart();
             frame_timer_.restart();
 
-            auto audio_buffer = core::audio_32_to_16(channel_remapper_->mix_and_rearrange(frame.audio_data()));
+            auto audio_buffer = channel_remapper_->mix_and_rearrange(frame.audio_data());
 
-            ndi_audio_frame_.p_data = audio_buffer.data();
+            ndi_audio_frame_.p_data = const_cast<int*>(audio_buffer.data());
             ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
             ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
             ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
-            ndi_lib_->NDIlib_util_send_send_audio_interleaved_16s(*ndi_send_instance_, &ndi_audio_frame_);
+            ndi_lib_->NDIlib_util_send_send_audio_interleaved_32s(*ndi_send_instance_, &ndi_audio_frame_);
 
 
             if (format_desc_.field_count == 2 && allow_fields_) {
