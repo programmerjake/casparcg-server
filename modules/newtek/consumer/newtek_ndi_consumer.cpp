@@ -72,6 +72,9 @@ struct newtek_ndi_consumer : public core::frame_consumer
     caspar::timer                        frame_timer_;
     caspar::timer                        frame_tick_timer_;
     int                                  frame_no_;
+    int                                  ndi_frame_no_;
+    int                                  timebase_frame_no_;
+    bool                                 is_sending_;
 
     tbb::concurrent_bounded_queue<core::const_frame>	frame_buffer_;
 
@@ -100,21 +103,26 @@ struct newtek_ndi_consumer : public core::frame_consumer
         graph_->set_color("frame-tick", diagnostics::color(0.9f, 0.6f, 0.9f));
         graph_->set_color("dropped-frame", diagnostics::color(0.3f, 0.6f, 0.3f));
         diagnostics::register_graph(graph_);
-		send_executor_.begin_invoke([=]() mutable
-		{
-			bool is_sending_ = true;
-			while (is_sending_)
-			{
-				if (frame_no_ >3 ) {
-					process();
-				}
-        		    graph_->set_value("frame-tick", frame_tick_timer_.elapsed() * format_desc_.fps * 0.5);
-        		    frame_tick_timer_.restart();
-			}
-		});
+        send_executor_.begin_invoke([=]() mutable
+        {
+            is_sending_ = true;
+            timebase_frame_no_ = 0;
+            ndi_frame_no_ = 0;
+            while (is_sending_)
+            {
+                if (frame_no_ >3 ) {
+                    ndi_send_frame();
+                }
+                graph_->set_value("frame-tick", frame_tick_timer_.elapsed() * format_desc_.fps * 0.5);
+                frame_tick_timer_.restart();
+            }
+        });
     }
 
-    ~newtek_ndi_consumer() {}
+    ~newtek_ndi_consumer() {
+        is_sending_ = false;
+        send_executor_.join();
+    }
 
     // frame_consumer
 
@@ -164,10 +172,12 @@ struct newtek_ndi_consumer : public core::frame_consumer
         return make_ready_future(true);
     }
 
-     std::future<bool> process()
+     std::future<bool> ndi_send_frame()
     {
         auto frame = core::const_frame::empty();
         frame_buffer_.pop(frame);
+
+        int64_t timecode = av_rescale_q(timebase_frame_no_, format_desc_.framerate, (AVRational){10000000LL, 1});
 
         ndi_video_frame_.xres                 = format_desc_.width;
         ndi_video_frame_.yres                 = format_desc_.height;
@@ -176,6 +186,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
         ndi_video_frame_.FourCC               = NDIlib_FourCC_type_BGRA;
         ndi_video_frame_.line_stride_in_bytes = format_desc_.width * 4;
         ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
+        ndi_video_frame_.timecode             = timecode;
 
         if (format_desc_.field_count == 2 && allow_fields_) {
             //ndi_video_frame_.yres /= 2;
@@ -214,6 +225,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
         //}
         //ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
         ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
+        timebase_frame_no_++;
         graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
         return make_ready_future(true);
     }
