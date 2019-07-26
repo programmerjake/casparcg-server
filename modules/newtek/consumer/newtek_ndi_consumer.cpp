@@ -67,8 +67,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
     std::shared_ptr<uint8_t>             field_data_;
     spl::shared_ptr<diagnostics::graph>  graph_;
     executor                             executor_;
+    executor                             send_executor_;
     caspar::timer                        tick_timer_;
     caspar::timer                        frame_timer_;
+    caspar::timer                        frame_tick_timer_;
     int                                  frame_no_;
 
     tbb::concurrent_bounded_queue<core::const_frame>	frame_buffer_;
@@ -84,6 +86,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
         , channel_index_(0)
         , out_channel_layout_(out_channel_layout)
         , executor_(print())
+        , send_executor_(print())
         , failover_(failover)
         , groups_ (groups)
     {
@@ -94,8 +97,21 @@ struct newtek_ndi_consumer : public core::frame_consumer
         graph_->set_text(print());
         graph_->set_color("frame-time", diagnostics::color(0.5f, 1.0f, 0.2f));
         graph_->set_color("tick-time", diagnostics::color(0.0f, 0.6f, 0.9f));
+        graph_->set_color("frame-tick", diagnostics::color(0.9f, 0.6f, 0.9f));
         graph_->set_color("dropped-frame", diagnostics::color(0.3f, 0.6f, 0.3f));
         diagnostics::register_graph(graph_);
+		send_executor_.begin_invoke([=]() mutable
+		{
+			bool is_sending_ = true;
+			while (is_sending_)
+			{
+				if (frame_no_ >3 ) {
+					process();
+				}
+        		    graph_->set_value("frame-tick", frame_tick_timer_.elapsed() * format_desc_.fps * 0.5);
+        		    frame_tick_timer_.restart();
+			}
+		});
     }
 
     ~newtek_ndi_consumer() {}
@@ -138,15 +154,13 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
     std::future<bool> send(core::const_frame frame) override
     { 
-        graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps);
+        graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
         tick_timer_.restart();
 
         frame_buffer_.push(frame);
-        if (frame_no_ < 5) {
-            frame_no_++;
-        } else {
-            process();
-        }
+        frame_no_++;
+        //if (frame_no_ > 3) {
+        //}
         return make_ready_future(true);
     }
 
@@ -200,7 +214,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
         //}
         //ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
         ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
-        graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps);
+        graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
         return make_ready_future(true);
     }
 
