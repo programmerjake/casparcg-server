@@ -45,6 +45,7 @@ if (MSVC)
 elseif (CMAKE_COMPILER_IS_GNUCXX)
 	set(PLATFORM_FOLDER_NAME	"linux")
 endif ()
+#set(Boost_USE_STATIC_LIBS   ON)
 
 ## boost ##
 if(USE_SYSTEM_BOOST)
@@ -53,12 +54,13 @@ if(USE_SYSTEM_BOOST)
 else()
 	set(Boost_INCLUDE_DIRS		"${DEPENDENCIES_FOLDER}/boost")
 	set(Boost_LIBRARIES boost_system boost_thread boost_chrono boost_filesystem boost_log boost_locale boost_regex boost_date_time)
-	link_directories("${DEPENDENCIES_FOLDER}/boost/stage/lib/${PLATFORM_FOLDER_NAME}")
+	link_directories("${DEPENDENCIES_FOLDER}/boost/stage/lib/linux")
 endif()
 add_definitions( -DBOOST_THREAD_VERSION=4 )
 add_definitions( "-DBOOST_ASIO_ERROR_CATEGORY_NOEXCEPT=noexcept(true)" ) # Workaround macro redefinition in boost
-add_definitions( -D_GLIBCXX_USE_CXX11_ABI=1 ) # Allow compilation in GCC 5 while keeping old dependencies
+#add_definitions( -D_GLIBCXX_USE_CXX11_ABI=1 ) # Allow compilation in GCC 5 while keeping old dependencies
 add_definitions( -DCASPAR_SOURCE_PREFIX="${CMAKE_CURRENT_SOURCE_DIR}" ) 
+ADD_COMPILE_OPTIONS (-std=c++14)
 
 ## TBB ##
 if(USE_SYSTEM_TBB)
@@ -98,6 +100,11 @@ set(RXCPP_INCLUDE_DIRS			"${DEPENDENCIES_FOLDER}/RxCpp/include")
 ## SFML ##
 if(USE_SYSTEM_SFML)
 	find_package(SFML REQUIRED COMPONENTS graphics window system)
+	set (SFML_LIBRARIES
+		sfml-graphics
+		sfml-window
+		sfml-system
+		)
 else()
 	set(SFML_INCLUDE_DIR		"${DEPENDENCIES_FOLDER}/sfml/include")
 	if(MSVC)
@@ -226,6 +233,7 @@ if (MSVC)
 	set(CMAKE_CXX_FLAGS_RELEASE			"${CMAKE_CXX_FLAGS_RELEASE}			/Oi /Ot /Gy /bigobj")
 	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO	"${CMAKE_CXX_FLAGS_RELWITHDEBINFO}	/Oi /Ot /Gy /bigobj /Ob2")
 elseif (CMAKE_COMPILER_IS_GNUCXX)
+	find_package(X11 REQUIRED)
 	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g")
 	add_compile_options( -std=c++14 )
 	add_compile_options( -msse3 )

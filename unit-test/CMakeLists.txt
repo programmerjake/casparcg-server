@@ -41,7 +41,7 @@ else ()
 endif ()
 
 include_directories(..)
-include_directories(${BOOST_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${RXCPP_INCLUDE_DIRS})
 include_directories(${TBB_INCLUDE_DIRS})
 include_directories(${GTEST_INCLUDE_DIRS})

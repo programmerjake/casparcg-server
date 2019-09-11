@@ -584,7 +584,7 @@ private:
 		setup_codec_defaults(*enc);
 
 		if(oc_->oformat->flags & AVFMT_GLOBALHEADER)
-			enc->flags |= CODEC_FLAG_GLOBAL_HEADER;
+			enc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
 		static const std::array<std::string, 4> char_id_map = {{"v", "a", "d", "s"}};
 
@@ -635,7 +635,7 @@ private:
 			av_dict_free(&av_codec_opts);
 		}
 
-		if(enc->codec_type == AVMEDIA_TYPE_AUDIO && !(codec.capabilities & CODEC_CAP_VARIABLE_FRAME_SIZE))
+		if(enc->codec_type == AVMEDIA_TYPE_AUDIO && !(codec.capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE))
 		{
 			CASPAR_ASSERT(enc->frame_size > 0);
 			audio_filter_->set_guaranteed_output_num_samples_per_frame(
@@ -898,7 +898,7 @@ private:
 			{
 				if(ret == AVERROR_EOF)
 				{
-					if(enc->codec->capabilities & CODEC_CAP_DELAY)
+					if(enc->codec->capabilities & AV_CODEC_CAP_DELAY)
 					{
 						while(encode_av_frame(
 								*video_st_,
@@ -925,9 +925,10 @@ private:
 
 					filt_frame->quality = enc->global_quality;
 
+					/*
 					if (!enc->me_threshold)
 						filt_frame->pict_type = AV_PICTURE_TYPE_NONE;
-
+					*/
 					encode_av_frame(
 						*video_st_,
 						avcodec_encode_video2,
@@ -997,7 +998,7 @@ private:
 				{
 					auto enc = audio_sts_.at(pad_id)->codec;
 
-					if (enc->codec->capabilities & CODEC_CAP_DELAY)
+					if (enc->codec->capabilities & AV_CODEC_CAP_DELAY)
 					{
 						while (encode_av_frame(
 								*audio_sts_.at(pad_id),
