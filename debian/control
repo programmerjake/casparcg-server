@@ -1,0 +1,50 @@
+Source: casparcg-server
+Maintainer: Gijs Peskens <gijs@in2ip.nl>
+Section: misc
+Priority: optional
+Standards-Version: 4.3.0
+Build-Depends:  cmake,
+                debhelper (>= 10~),
+                libatk1.0-dev,
+                libavcodec-dev,
+                libavdevice-dev,
+                libavfilter-dev,
+                libavutil-dev,
+                libcups2-dev,
+                libfreeimage-dev,
+                libfreetype6-dev,
+                libgconf2-dev,
+                libgdk-pixbuf2.0-dev,
+                libglew-dev,
+                libgtest-dev,
+                libgtk2.0-dev,
+                libjpeg-dev,
+                libnss3-dev,
+                libopenal-dev,
+                libpostproc-dev,
+                libsndfile1-dev,
+                libswresample-dev,
+                libtbb-dev,
+                libudev-dev,
+                libx11-dev,
+                libxcomposite-dev,
+                libxrandr-dev,
+                libsfml-graphics2.5,
+                libsfml-system2.5,
+                libsfml-window2.5,
+                libboost-chrono-dev,
+                libboost-coroutine-dev,
+                libboost-date-time-dev,
+                libboost-dev (>= 0.66),
+                libboost-filesystem-dev,
+                libboost-locale-dev,
+                libboost-log-dev,
+                libboost-regex-dev,
+                libboost-thread-dev,
+                pkg-config
+
+Package: casparcg-server
+Architecture: amd64
+Pre-Depends: ${misc:Pre-Depends}
+Depends: fonts-liberation2, ${misc:Depends}, ${shlibs:Depends}
+Description: in2ip package for CasparCG Server

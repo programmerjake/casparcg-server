@@ -1,0 +1,21 @@
+[Unit]
+
+Description=CasparCG Server
+After=DesktopVideoHelper.service
+After=graphical.target  lxdm.service network-online.target
+Requires=lxdm.service
+
+[Service]
+User=playout
+Type=simple
+Restart=always
+WorkingDirectory=/opt/casparcgserver
+Environment="DISPLAY=:0"
+Environment="LD_LIBRARY_PATH=/opt/casparcgserver/lib"
+ExecStart=/opt/casparcgserver/bin/casparcg-server /etc/casparcg/casparcg.config
+
+
+[Install]
+
+WantedBy=default.target
+
