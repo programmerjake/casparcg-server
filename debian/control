@@ -46,5 +46,5 @@ Build-Depends:  cmake,
 Package: casparcg-server
 Architecture: amd64
 Pre-Depends: ${misc:Pre-Depends}
-Depends: fonts-liberation2, ${misc:Depends}, ${shlibs:Depends}
+Depends: adduser fonts-liberation2, ${misc:Depends}, ${shlibs:Depends}
 Description: in2ip package for CasparCG Server
