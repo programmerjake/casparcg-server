@@ -288,7 +288,7 @@ void init(core::module_dependencies dependencies)
 
 void uninit()
 {
-	avfilter_uninit();
+	//avfilter_uninit();
 	avformat_network_deinit();
 	av_lockmgr_register(nullptr);
 }

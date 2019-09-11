@@ -37,13 +37,15 @@ add_executable(casparcg ${SOURCES} ${HEADERS} ${OS_SPECIFIC_SOURCES})
 add_precompiled_header(casparcg stdafx.h FORCEINCLUDE)
 if (CMAKE_COMPILER_IS_GNUCXX)
 	target_link_libraries(casparcg
+		${X11_LIBRARIES}
+		${Boost_LIBRARIES}
 		-no-pie # Don't produce a position independent executable
 	)
 endif ()
 
 
 include_directories(..)
-include_directories(${BOOST_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${RXCPP_INCLUDE_DIRS})
 include_directories(${TBB_INCLUDE_DIRS})
 

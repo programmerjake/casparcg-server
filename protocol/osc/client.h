@@ -24,6 +24,7 @@
 
 #include <boost/asio/ip/udp.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/asio.hpp>
 
 #include <common/memory.h>
 #include <core/monitor/monitor.h>
