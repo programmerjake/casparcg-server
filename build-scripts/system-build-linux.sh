@@ -54,8 +54,9 @@ mkdir -p "$FONT_DIR"   || fail "Could not create $FONT_DIR"
 # Copy compiled binaries
 echo Copying binaries...
 cp -fa  shell/lib* "$LIB_DIR/" 2>/dev/null         || echo "Did not copy server libraries"
+cp -fa  ../ndilibs/* "$LIB_DIR/" 2>/dev/null       || echo "Could not copy NDI libraries"
 cp -fa  shell/*.ttf "$FONT_DIR/" 2>/dev/null       || echo "Did not copy fonts"
-cp -fa  ../deploy/general/server/font/LiberationSans-Regular.ttf "$SERVER_FOLDER" || echo "Could not copy liberation font"
+cp -fa  ../deploy/general/server/font/LiberationSans-Regular.ttf "$SERVER_FOLDER" 2>/dev/null || echo "Could not copy liberation font"
 cp -fa  shell/casparcg "$BIN_DIR/casparcg-server"  || fail "Could not copy server executable"
 cp -fa  shell/casparcg.config "$DOC_DIR/"          || fail "Could not copy server config"
 cp -faR shell/locales "$BIN_DIR/" 2>/dev/null      || echo "Did not copy server CEF locales"
