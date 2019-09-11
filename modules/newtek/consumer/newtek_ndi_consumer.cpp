@@ -140,8 +140,8 @@ struct newtek_ndi_consumer : public core::frame_consumer
             auto tmp_groups             = u8(groups_);
             NDI_send_create_desc.p_groups = tmp_groups.c_str();
         }
-        NDI_send_create_desc.clock_audio = true;
-        NDI_send_create_desc.clock_video = true;
+        NDI_send_create_desc.clock_audio = false;
+        NDI_send_create_desc.clock_video = false;
 
         ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
                               [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
@@ -152,30 +152,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
             NDI_failover_source.p_ndi_name = tmp_failover.c_str();
             ndi_lib_->NDIlib_send_set_failover(*ndi_send_instance_, &NDI_failover_source); 
         }
-        auto t = boost::chrono::duration_cast<boost::chrono::nanoseconds>(boost::chrono::high_resolution_clock::now().time_since_epoch()).count();
-	ndi_start_time_ =  t;
-
-	thread_ = boost::thread([this]{run();});
-
-	/*
-        send_executor_.begin_invoke([=]() mutable
-        {
-            is_sending_ = true;
-            timebase_frame_no_ = 0;
-            ndi_frame_no_ = 0;
-            while (is_sending_)
-            {
-                if (frame_no_ >3 ) {
-                    ndi_send_frame();
-                }
-        	timebase_frame_no_++;
-                graph_->set_value("frame-tick", frame_tick_timer_.elapsed() * format_desc_.fps * 0.5);
-                frame_tick_timer_.restart();
-            }
-        }); */
+        auto t = time(nullptr);
+	ndi_start_time_ =  t * 10000000LL;
 
         graph_->set_text(print());
-        // CASPAR_VERIFY(ndi_send_instance_);
     }
 
     void run() 
@@ -186,10 +166,9 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_frame_no_ = 0;
             while (is_sending_)
             {
-                //if (frame_no_ >3 ) {
-                    ndi_send_frame();
-                //}
-                timebase_frame_no_++;
+                ndi_send_frame();
+                
+		timebase_frame_no_++;
                 graph_->set_value("frame-tick", frame_tick_timer_.elapsed() * format_desc_.fps * 0.5);
                 frame_tick_timer_.restart();
             }
@@ -204,8 +183,12 @@ struct newtek_ndi_consumer : public core::frame_consumer
 		graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
 	}
         frame_no_++;
-        //if (frame_no_ > 3) {
-        //}
+	executor_.begin_invoke([=]() mutable
+        {
+            ndi_send_frame();
+	    timebase_frame_no_++;
+        });	
+
         return make_ready_future(true);
     }
 
@@ -216,9 +199,9 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
 	boost::rational<int> framerate(format_desc_.framerate.denominator(), format_desc_.framerate.numerator());
 
-        int64_t timecode = timebase_frame_no_ * boost::rational_cast<double>(framerate) * 100000000LL + ndi_start_time_;
+        int64_t timecode = timebase_frame_no_ * boost::rational_cast<double>(framerate) * 10000000LL + ndi_start_time_;
 
-	//CASPAR_LOG(debug) << "NDI Timecode would be: " << timecode;
+	CASPAR_LOG(debug) << "NDI Timecode would be: " << timecode;
 
         ndi_video_frame_.xres                 = format_desc_.width;
         ndi_video_frame_.yres                 = format_desc_.height;
@@ -227,21 +210,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
         ndi_video_frame_.FourCC               = NDIlib_FourCC_type_BGRA;
         ndi_video_frame_.line_stride_in_bytes = format_desc_.width * 4;
         ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
-        //ndi_video_frame_.timecode             = timecode;
-        ndi_video_frame_.timecode             = NDIlib_send_timecode_synthesize;
-
-        if (format_desc_.field_count == 2 && allow_fields_) {
-            //ndi_video_frame_.yres /= 2;
-            //ndi_video_frame_.frame_rate_N /= 2;
-            //ndi_video_frame_.picture_aspect_ratio = format_desc_.width * 1.0f / format_desc_.height;
-            //field_data_.reset(new uint8_t[ndi_video_frame_.line_stride_in_bytes * ndi_video_frame_.yres],
-                //               std::default_delete<uint8_t[]>());
-            //ndi_video_frame_.p_data = field_data_.get();
-        }
+        ndi_video_frame_.timecode             = timecode;
 
         ndi_audio_frame_.reference_level = 0;
-        ndi_audio_frame_.timecode    = NDIlib_send_timecode_synthesize;
-        //ndi_audio_frame_.timecode    = timecode;
+        ndi_audio_frame_.timecode    = timecode;
 
 
         frame_timer_.restart();
@@ -257,16 +229,8 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
         if (format_desc_.field_count == 2 && allow_fields_) {
             ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_interleaved;
-            //(frame_no_ % 2 ? NDIlib_frame_format_type_field_1 : NDIlib_frame_format_type_field_0);
-            //for (auto y = 0; y < ndi_video_frame_.yres; ++y) {
-            //    std::memcpy(reinterpret_cast<char*>(ndi_video_frame_.p_data) + y * format_desc_.width * 4,
-            //                frame.image_data(0).data() + (y * 2 + frame_no_ % 2) * format_desc_.width * 4,
-            //                format_desc_.width * 4);
-            //}
-        }// else {
-            ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data(0).begin());
-        //}
-        //ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
+        }
+        ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data(0).begin());
         ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
         graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
         return make_ready_future(true);
