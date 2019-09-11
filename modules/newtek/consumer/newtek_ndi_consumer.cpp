@@ -201,7 +201,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
         int64_t timecode = timebase_frame_no_ * boost::rational_cast<double>(framerate) * 10000000LL + ndi_start_time_;
 
-	CASPAR_LOG(debug) << "NDI Timecode would be: " << timecode;
+//	CASPAR_LOG(debug) << "NDI Timecode would be: " << timecode;
 
         ndi_video_frame_.xres                 = format_desc_.width;
         ndi_video_frame_.yres                 = format_desc_.height;
