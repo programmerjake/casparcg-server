@@ -1,8 +1,8 @@
 obj-*/shell/lib*                                        /opt/casparcg/lib
 ndilibs/*                                               /opt/casparcg/lib
 deploy/general/server/font/LiberationSans-Regular.ttf   /opt/casparcg
-obj-*/shell/casparcg                                    /opt/casparcg/bin/
-obj-*/shell/casparcg.config                             /etc/casparcg/casparcg.config
+obj-*/shell/casparcg                                    /opt/casparcg/bin
+obj-*/shell/casparcg.config                             /etc/casparcg
 obj-*/shell/locales                                     /opt/casparcg/bin
 obj-*/shell/swiftshader                                 /opt/casparcg/bin
 obj-*/shell/*.pak                                       /opt/casparcg/bin
