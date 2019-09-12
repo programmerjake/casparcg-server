@@ -1,6 +1,14 @@
+casparcg-server (2.1.in2ip.03.3-3) unstable; urgency=medium
+
+  [ Gijs Peskens ]
+  * update changelog
+  * Working version
+
+ -- root <root@lurch-test>  Thu, 12 Sep 2019 09:39:21 +0000
+
 casparcg-server (2.1.in2ip.03.3-2) unstable; urgency=medium
 
-  [ root ]
+  [ Gijs Peskens ]
   ** SNAPSHOT build @a30ac0950fb0f4ea0b0a1227dee61f18c835f486 **
 
   * UNRELEASED
@@ -8,16 +16,16 @@ casparcg-server (2.1.in2ip.03.3-2) unstable; urgency=medium
   [ Gijs Peskens ]
   * update changelog
 
- -- root <root@lurch-test>  Thu, 12 Sep 2019 09:08:45 +0000
+ -- Gijs Peskens <gijs@in2ip.nl>  Thu, 12 Sep 2019 09:08:45 +0000
 
 casparcg-server (2.1.in2ip.03.3-1) unstable; urgency=medium
   Absolute path for fonts.
 
- -- root <gijs@in2ip.nl>  Thu, 12 Sep 2019 07:20:00 +0000
+ -- Gijs Peskens <gijs@in2ip.nl>  Thu, 12 Sep 2019 07:20:00 +0000
 
 casparcg-server (2.1.in2ip.03.2-1) unstable; urgency=medium
 
-  [ root ]
+  [ Gijs Peskens ]
   * Initial release. (Closes: #XXXXXX)
 
   [ Gijs Peskens ]
@@ -33,5 +41,5 @@ casparcg-server (2.1.in2ip.03.2-1) unstable; urgency=medium
   * fix service file
   * more fixings
 
- -- root <gijs@in2ip.nl>  Thu, 12 Sep 2019 07:20:00 +0000
+ -- Gijs Peskens <gijs@in2ip.nl>  Thu, 12 Sep 2019 07:20:00 +0000
 
