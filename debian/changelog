@@ -1,8 +1,23 @@
-casparcg-server (2.1.in2ip.03.2-1) UNRELEASED; urgency=medium
+casparcg-server (2.1.in2ip.03.2-1) unstable; urgency=medium
 
+  [ root ]
   * Initial release. (Closes: #XXXXXX)
 
- -- root <root@lurch-test>  Wed, 11 Sep 2019 13:41:52 +0000
+  [ Gijs Peskens ]
+  * more fixes
+  * yes
+  * fuckery
+  * more fixing
+  * fix configfile location
+  * more improvements to packaging
+  * tr
+  * fuckery
+  * tabs instead of spaces, because, well debian
+  * fix service file
+  * more fixings
+
+ -- root <root@lurch-test>  Thu, 12 Sep 2019 07:20:00 +0000
+
 casparcg-server (2.1.in2ip.03.3-1) UNRELEASED; urgency=medium
 
   * Initial release. (Closes: #XXXXXX)
