@@ -1,3 +1,8 @@
+casparcg-server (2.1.in2ip.03.3-1) unstable; urgency=medium
+  Absolute path for fonts.
+
+ -- root <gijs@in2ip.nl>  Thu, 12 Sep 2019 07:20:00 +0000
+
 casparcg-server (2.1.in2ip.03.2-1) unstable; urgency=medium
 
   [ root ]
@@ -16,11 +21,5 @@ casparcg-server (2.1.in2ip.03.2-1) unstable; urgency=medium
   * fix service file
   * more fixings
 
- -- root <root@lurch-test>  Thu, 12 Sep 2019 07:20:00 +0000
-
-casparcg-server (2.1.in2ip.03.3-1) UNRELEASED; urgency=medium
-
-  * Initial release. (Closes: #XXXXXX)
-
- -- root <root@lurch-test>  Wed, 11 Sep 2019 13:41:52 +0000
+ -- root <gijs@in2ip.nl>  Thu, 12 Sep 2019 07:20:00 +0000
 
