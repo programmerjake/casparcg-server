@@ -9,10 +9,9 @@ Requires=lxdm.service
 User=playout
 Type=simple
 Restart=always
-WorkingDirectory=/opt/casparcgserver
 Environment="DISPLAY=:0"
-Environment="LD_LIBRARY_PATH=/opt/casparcgserver/lib"
-ExecStart=/opt/casparcgserver/bin/casparcg-server /etc/casparcg/casparcg.config
+Environment="LD_LIBRARY_PATH=/opt/casparcg/lib"
+ExecStart=/opt/casparcg/bin/casparcg /etc/casparcg/casparcg.config
 
 
 [Install]
