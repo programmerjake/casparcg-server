@@ -16,3 +16,14 @@
 CMakeLists.txt.user
 .settings
 
+
+debian/*.debhelper.log
+debian/*.postrm.debhelper
+debian/*.substvars
+debian/debhelper-build-stamp
+debian/.debhelper/
+debian/casparcg-server.postinst.debhelper
+debian/casparcg-server.prerm.debhelper
+debian/files
+debian/casparcg-server
+obj-x86_64-linux-gnu/
