@@ -4,7 +4,7 @@ casparcg-server (2.1.in2ip.03.3-3) unstable; urgency=medium
   * update changelog
   * Working version
 
- -- root <root@lurch-test>  Thu, 12 Sep 2019 09:39:21 +0000
+ -- Gijs Peskens <gijs@in2ip.nl>  Thu, 12 Sep 2019 09:39:21 +0000
 
 casparcg-server (2.1.in2ip.03.3-2) unstable; urgency=medium
 
