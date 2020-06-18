@@ -213,13 +213,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
         ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
                               [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
         is_sending_ = true;
-        while (!started_) {
-            if (frame_buffer_.size() == 6)
-                started_ = true;
-            ready_for_new_frames_.release();
-        }
         while (is_sending_)
         {
+            if (!started_)
+                continue;
             ndi_send_frame();
         }
     }
@@ -230,6 +227,13 @@ struct newtek_ndi_consumer : public core::frame_consumer
 		    graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
 	    }
         frame_no_++;
+        if (frame_no_ <= 6) {
+            if (frame_no_ == 6)
+                started_ = true;
+            else 
+                return make_ready_future(true);
+        }
+            
         graph_->set_value("buffered-frames", static_cast<double>(frame_buffer_.size() + 0.001) / frame_buffer_.capacity());
         auto send_completion = spl::make_shared<std::promise<bool>>();
 
