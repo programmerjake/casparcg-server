@@ -1,3 +1,11 @@
+casparcg-server (2.1.in2ip.03.4-1) unstable; urgency=medium
+
+  [ Gijs Peskens ]
+  * Upgrade NDI to 4.5.1
+  * Incorporate all fixes in NDI consumer
+
+ -- Gijs Peskens <gijs@in2ip.nl>  Thu, 18 Jun 2020 07:09:36 +0000
+
 casparcg-server (2.1.in2ip.03.3-3) unstable; urgency=medium
 
   [ Gijs Peskens ]
