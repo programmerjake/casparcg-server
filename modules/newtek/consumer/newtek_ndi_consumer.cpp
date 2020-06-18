@@ -71,9 +71,10 @@ struct newtek_ndi_consumer : public core::frame_consumer
     std::unique_ptr<core::audio_channel_remapper>	channel_remapper_;
 
     int                                  channel_index_;
-    NDIlib_v3*                           ndi_lib_;
+    NDIlib_v4*                           ndi_lib_;
     NDIlib_video_frame_v2_t              ndi_video_frame_;
     NDIlib_audio_frame_interleaved_32s_t ndi_audio_frame_ = { 0 };
+    boost::rational<int>                 framerate_;
     std::shared_ptr<uint8_t>             field_data_;
     spl::shared_ptr<diagnostics::graph>  graph_;
     executor                             executor_;
@@ -83,9 +84,12 @@ struct newtek_ndi_consumer : public core::frame_consumer
     int                                  frame_no_;
     int                                  ndi_frame_no_;
     int                                  timebase_frame_no_;
-    bool                                 is_sending_;
-    int64_t				 ndi_start_time_;
-    boost::thread                                                                           thread_;
+    tbb::atomic<bool>                    is_sending_;
+    tbb::atomic<bool>                    started_;
+    int64_t                              ndi_start_time_;
+    boost::thread                        thread_;
+    tbb::atomic<int64_t>                        current_encoding_delay_;
+    caspar::semaphore									ready_for_new_frames_	{ 0 };
 
     tbb::concurrent_bounded_queue<core::const_frame>	frame_buffer_;
 
@@ -104,15 +108,16 @@ struct newtek_ndi_consumer : public core::frame_consumer
         , groups_ (groups)
     {
 
-        frame_buffer_.set_capacity(1);
+        frame_buffer_.set_capacity(7);
 
         ndi_lib_ = ndi::load_library();
         graph_->set_text(print());
-        graph_->set_color("frame-time", diagnostics::color(0.5f, 1.0f, 0.2f));
-        graph_->set_color("tick-time", diagnostics::color(0.0f, 0.6f, 0.9f));
+        graph_->set_color("buffered-frames", diagnostics::color(0.5f, 1.0f, 0.2f));
         graph_->set_color("frame-tick", diagnostics::color(0.9f, 0.6f, 0.9f));
         graph_->set_color("dropped-frame", diagnostics::color(0.3f, 0.6f, 0.3f));
         diagnostics::register_graph(graph_);
+        current_encoding_delay_ = 0;
+        started_ = false;
     }
 
     ~newtek_ndi_consumer() {
@@ -141,10 +146,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
             NDI_send_create_desc.p_groups = tmp_groups.c_str();
         }
         NDI_send_create_desc.clock_audio = false;
-        NDI_send_create_desc.clock_video = false;
-
-        ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
-                              [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
+        NDI_send_create_desc.clock_video = true;
 
         if (!failover_.empty()) {
             auto tmp_failover = u8(failover_);
@@ -153,87 +155,119 @@ struct newtek_ndi_consumer : public core::frame_consumer
             ndi_lib_->NDIlib_send_set_failover(*ndi_send_instance_, &NDI_failover_source); 
         }
         auto t = time(nullptr);
-	ndi_start_time_ =  t * 10000000LL;
+    	ndi_start_time_ =  t * 10000000LL;
+        framerate_ = (format_desc_.framerate.denominator(), format_desc_.framerate.numerator());
 
+        ndi_video_frame_.xres                 = format_desc_.width;
+        ndi_video_frame_.yres                 = format_desc_.height;
+        ndi_video_frame_.frame_rate_N         = format_desc_.time_scale;
+        ndi_video_frame_.frame_rate_D         = format_desc_.duration;
+        ndi_video_frame_.FourCC               = NDIlib_FourCC_type_BGRA;
+        ndi_video_frame_.line_stride_in_bytes = format_desc_.width * 4;
+        ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
+        if (format_desc_.field_count == 2 && allow_fields_) {
+            ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_interleaved;
+        }
+
+
+        ndi_audio_frame_.reference_level = 0;
+        ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
+        ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
+
+        //for (int n = 0; n < 6; ++n)
+        //{
+        //    frame_buffer_.try_push(core::const_frame::empty());
+        //}
+        thread_ = boost::thread([this]{run();});
         graph_->set_text(print());
     }
 
     void run() 
     {
-            ensure_gpf_handler_installed_for_thread("ndi-send-thread");
-            is_sending_ = true;
-            timebase_frame_no_ = 0;
-            ndi_frame_no_ = 0;
-            while (is_sending_)
-            {
-                ndi_send_frame();
-                
-		timebase_frame_no_++;
-                graph_->set_value("frame-tick", frame_tick_timer_.elapsed() * format_desc_.fps * 0.5);
-                frame_tick_timer_.restart();
-            }
+        ensure_gpf_handler_installed_for_thread("ndi-send-thread");
+        int retcode;
+        int policy;
+
+        pthread_t threadID = (pthread_t) thread_.native_handle();
+
+        struct sched_param param;
+
+        pthread_getschedparam(threadID, &policy, &param);
+
+        policy = SCHED_RR;
+        param.sched_priority = 99;
+
+        pthread_setschedparam(threadID, policy, &param);
+
+        NDIlib_send_create_t NDI_send_create_desc;
+
+        auto tmp_name                   = u8(name_);
+        NDI_send_create_desc.p_ndi_name = tmp_name.c_str();
+        if (!groups_.empty()) {
+            auto tmp_groups             = u8(groups_);
+            NDI_send_create_desc.p_groups = tmp_groups.c_str();
+        }
+        NDI_send_create_desc.clock_audio = false;
+        NDI_send_create_desc.clock_video = true;
+
+        ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
+                              [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
+        is_sending_ = true;
+        while (!started_) {
+            if (frame_buffer_.size() == 6)
+                started_ = true;
+            ready_for_new_frames_.release();
+        }
+        while (is_sending_)
+        {
+            ndi_send_frame();
+        }
     }
 
     std::future<bool> send(core::const_frame frame) override
     { 
-        graph_->set_value("tick-time", tick_timer_.elapsed() * format_desc_.fps * 0.5);
-        tick_timer_.restart();
-
         if (!frame_buffer_.try_push(frame)) {
-		graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
-	}
+		    graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
+	    }
         frame_no_++;
-	executor_.begin_invoke([=]() mutable
-        {
-            ndi_send_frame();
-	    timebase_frame_no_++;
-        });	
+        graph_->set_value("buffered-frames", static_cast<double>(frame_buffer_.size() + 0.001) / frame_buffer_.capacity());
+        auto send_completion = spl::make_shared<std::promise<bool>>();
 
-        return make_ready_future(true);
+		ready_for_new_frames_.acquire(1, [send_completion]
+		{
+			send_completion->set_value(true);
+		});
+
+		return send_completion->get_future();
     }
 
-     std::future<bool> ndi_send_frame()
+     bool ndi_send_frame()
     {
         auto frame = core::const_frame::empty();
         frame_buffer_.pop(frame);
 
-	boost::rational<int> framerate(format_desc_.framerate.denominator(), format_desc_.framerate.numerator());
+        //int64_t timecode = timebase_frame_no_ * boost::rational_cast<double>(framerate_) * 10000000LL + ndi_start_time_;
 
-        int64_t timecode = timebase_frame_no_ * boost::rational_cast<double>(framerate) * 10000000LL + ndi_start_time_;
-
-//	CASPAR_LOG(debug) << "NDI Timecode would be: " << timecode;
-
-        ndi_video_frame_.xres                 = format_desc_.width;
-        ndi_video_frame_.yres                 = format_desc_.height;
-        ndi_video_frame_.frame_rate_N         = format_desc_.framerate.numerator();
-        ndi_video_frame_.frame_rate_D         = format_desc_.framerate.denominator();
-        ndi_video_frame_.FourCC               = NDIlib_FourCC_type_BGRA;
-        ndi_video_frame_.line_stride_in_bytes = format_desc_.width * 4;
-        ndi_video_frame_.frame_format_type    = NDIlib_frame_format_type_progressive;
-        ndi_video_frame_.timecode             = timecode;
-
-        ndi_audio_frame_.reference_level = 0;
-        ndi_audio_frame_.timecode    = timecode;
-
-
-        frame_timer_.restart();
-
+//        ndi_audio_frame_.timecode    = timecode;
         auto audio_buffer = channel_remapper_->mix_and_rearrange(frame.audio_data());
-
         ndi_audio_frame_.p_data = const_cast<int*>(audio_buffer.data());
-        ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
-        ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
         ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
         ndi_lib_->NDIlib_util_send_send_audio_interleaved_32s(*ndi_send_instance_, &ndi_audio_frame_);
 
-
-        if (format_desc_.field_count == 2 && allow_fields_) {
-            ndi_video_frame_.frame_format_type = NDIlib_frame_format_type_interleaved;
-        }
+        //ndi_video_frame_.timecode             = timecode;
         ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data(0).begin());
         ndi_lib_->NDIlib_send_send_video_async_v2(*ndi_send_instance_, &ndi_video_frame_);
-        graph_->set_value("frame-time", frame_timer_.elapsed() * format_desc_.fps * 0.5);
-        return make_ready_future(true);
+
+		timebase_frame_no_++;
+
+        current_encoding_delay_ = frame.get_age_millis();
+        graph_->set_value("frame-tick", frame_tick_timer_.elapsed() * format_desc_.fps * 0.5);
+        frame_tick_timer_.restart();
+        if (!started_) {
+            return true;
+        }
+        ready_for_new_frames_.release();
+        return true;
     }
 
     std::wstring print() const override
@@ -275,12 +309,12 @@ struct newtek_ndi_consumer : public core::frame_consumer
 
     int64_t presentation_frame_age_millis() const override
     {
-        return 0;
+        return current_encoding_delay_;
     }
 
     int index() const override { return 900; }
 
-    bool has_synchronization_clock() const override { return false; }
+    bool has_synchronization_clock() const override { return started_; }
 
     core::monitor::subject& monitor_output()
     {
@@ -295,9 +329,7 @@ struct newtek_ndi_consumer : public core::frame_consumer
 		{
 			adjusted.num_channels = 2;
 			adjusted.channel_order.push_back(adjusted.channel_order.at(0)); // Usually FC -> FC FC
-		} else {
-                    adjusted.num_channels = 4;
-                }
+		} 
 		return adjusted;
 	}
 
