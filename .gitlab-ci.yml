@@ -48,6 +48,7 @@ build-stretch:
       - make -j8
 
 package-buster:
+    stage: package
     only:
       - master
       - tags
@@ -65,6 +66,7 @@ package-buster:
       paths:
         - package
 package-stretch:
+    stage: package
     only:
     - master
     - tags
@@ -73,7 +75,7 @@ package-stretch:
       - rm -Rf debian-build
       - dch --local ~buster "Build for buster"
       - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
-      - DEB_BUILD_OPTIONS='parallel=12' gbp buildpackage -us -uc--git-ignore-new --git-debian-branch="$CI_COMMIT_REF_NAME" --git-upstream-tree=SLOPPY  --git-upstream-tag='v%(version)s' --git-export-dir=./debian-build
+      - DEB_BUILD_OPTIONS='parallel=12' gbp buildpackage -us -uc --git-ignore-new --git-debian-branch="$CI_COMMIT_REF_NAME" --git-upstream-tree=SLOPPY  --git-upstream-tag='v%(version)s' --git-export-dir=./debian-build
       - ls -slah debian-build
       - mkdir -p package/stretch && cd debian-build && cp -t ../package/stretch *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
     artifacts:

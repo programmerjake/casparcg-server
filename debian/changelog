@@ -1,3 +1,10 @@
+casparcg-server (2.1.in2ip.03.5-1) unstable; urgency=medium
+
+  [ Gijs Peskens ]
+  * NDI too few frames fix.
+
+ -- Gijs Peskens <gijs@in2ip.nl>  Tue, 14 Jul 2020 14:23:05 +0200
+
 casparcg-server (2.1.in2ip.03.4-1) unstable; urgency=medium
 
   [ Gijs Peskens ]
