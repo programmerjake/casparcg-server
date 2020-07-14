@@ -1,0 +1,46 @@
+stages:
+  - build
+  - package
+
+.debian-buster:
+    image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/buster-build:latest
+    stage: build
+    tags: 
+        - docker
+        - casparcg
+
+.debian-stretch:
+    image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/stretch-build:latest
+    stage: build
+    tags:
+        - docker
+        - casparcg
+
+
+#build-buster:
+#    extends: .debian-buster
+#    script:
+#      - mkdir build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_GTEST=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+#      - make -j8
+
+#build-stretch:
+#    extends: .debian-stretch
+#    script:
+#      - mkdir build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_GTEST=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+#      - make -j8
+
+package-buster:
+    extends: .debian-buster
+    script:
+      - rm -Rf debian-build
+      - dch --local ~buster "Build for buster"
+      - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
+      - DEB_BUILD_OPTIONS='parallel=12' gbp buildpackage -us -uc --git-ignore-new --git-debian-branch="$CI_COMMIT_REF_NAME" --git-upstream-tree=SLOPPY  --git-upstream-tag='v%(version)s' --git-export-dir=./debian-build
+      - ls -slah debian-build
+      - mkdir -p package/buster && cd debian-build && cp -t ../package/buster *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
+#    artifacts:
+#      untracked: false
+#      expire_in: 30 days
+#      paths:
+#        - package
+
