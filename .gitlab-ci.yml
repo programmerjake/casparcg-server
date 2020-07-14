@@ -1,6 +1,15 @@
 stages:
   - build
   - package
+  - deploy-repo
+
+before_script:
+  - eval $(ssh-agent -s)
+  - echo $SSH_PRIVATE_KEY | base64 -d | ssh-add - 
+  - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+  - ssh debian-repo@debian.in2ip.net "/bin/true"
 
 .debian-buster:
     image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/buster-build:latest
@@ -17,19 +26,31 @@ stages:
         - casparcg
 
 
-#build-buster:
-#    extends: .debian-buster
-#    script:
-#      - mkdir build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_GTEST=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
-#      - make -j8
+package-buster:
+build-buster:
+    extends: .debian-buster
+    cache:
+      key: "buster-build-$CI_COMMIT_REF_SLUG"
+      paths:
+        - build
+    script:
+      - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_GTEST=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - make -j8
 
-#build-stretch:
-#    extends: .debian-stretch
-#    script:
-#      - mkdir build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_GTEST=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
-#      - make -j8
+build-stretch:
+    extends: .debian-stretch
+    cache:
+      key: "stretch-build-$CI_COMMIT_REF_SLUG"
+      paths:
+        - build
+    script:
+      - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_GTEST=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - make -j8
 
 package-buster:
+    only:
+      - master
+      - tags
     extends: .debian-buster
     script:
       - rm -Rf debian-build
@@ -38,9 +59,34 @@ package-buster:
       - DEB_BUILD_OPTIONS='parallel=12' gbp buildpackage -us -uc --git-ignore-new --git-debian-branch="$CI_COMMIT_REF_NAME" --git-upstream-tree=SLOPPY  --git-upstream-tag='v%(version)s' --git-export-dir=./debian-build
       - ls -slah debian-build
       - mkdir -p package/buster && cd debian-build && cp -t ../package/buster *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
-#    artifacts:
-#      untracked: false
-#      expire_in: 30 days
-#      paths:
-#        - package
+    artifacts:
+      untracked: false
+      expire_in: 30 days
+      paths:
+        - package
+package-stretch:
+    only:
+    - master
+    - tags
+    extends: .debian-stretch
+    script:
+      - rm -Rf debian-build
+      - dch --local ~buster "Build for buster"
+      - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
+      - DEB_BUILD_OPTIONS='parallel=12' gbp buildpackage -us -uc--git-ignore-new --git-debian-branch="$CI_COMMIT_REF_NAME" --git-upstream-tree=SLOPPY  --git-upstream-tag='v%(version)s' --git-export-dir=./debian-build
+      - ls -slah debian-build
+      - mkdir -p package/stretch && cd debian-build && cp -t ../package/stretch *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
+    artifacts:
+      untracked: false
+      expire_in: 30 days
+      paths:
+        - package
 
+deploy-repo:
+  stage: deploy-repo
+  only:
+    - master
+    - tags
+  script:
+    - scp -r ./package debian.in2ip.net:./$CI_COMMIT_SHA
+    - ssh debian-repo@debian.in2ip.net "./dodeploy.sh $CI_COMMIT_SHA"
