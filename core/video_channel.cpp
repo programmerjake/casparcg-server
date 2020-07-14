@@ -81,7 +81,10 @@ struct video_channel::impl final
 	int64_t												last_tick_listener_id	= 0;
 	std::unordered_map<int64_t, std::function<void ()>>	tick_listeners_;
 
-	executor											executor_				{ L"video_channel " + boost::lexical_cast<std::wstring>(index_) };
+	//executor											executor_				{ L"video_channel " + boost::lexical_cast<std::wstring>(index_) };
+    std::atomic<bool> abort_request_{false};
+    std::thread       thread_;
+
 public:
 	impl(
 			int index,
@@ -106,7 +109,28 @@ public:
 		mixer_.monitor_output().attach_parent(monitor_subject_);
 		stage_.monitor_output().attach_parent(monitor_subject_);
 
-		executor_.begin_invoke([=]{tick();});
+		//executor_.begin_invoke([=]{tick();});
+		thread_ = std::thread([=] {
+            char *name;
+            asprintf(&name, "video_channel %i", index_);
+			ensure_gpf_handler_installed_for_thread(name);
+			int retcode;
+			int policy;
+
+			pthread_t threadID = (pthread_t) thread_.native_handle();
+
+			struct sched_param param;
+
+			pthread_getschedparam(threadID, &policy, &param);
+
+			policy = SCHED_FIFO;
+			param.sched_priority = 99;
+
+			pthread_setschedparam(threadID, policy, &param);
+			while (!abort_request_) {
+				tick();
+			}
+		});
 
 		CASPAR_LOG(info) << print() << " Successfully Initialized.";
 	}
@@ -114,6 +138,8 @@ public:
 	~impl()
 	{
 		CASPAR_LOG(info) << print() << " Uninitializing.";
+		abort_request_ = true;
+		thread_.join();
 	}
 
 	core::video_format_desc video_format_desc() const
@@ -202,8 +228,8 @@ public:
 			CASPAR_LOG_CURRENT_EXCEPTION();
 		}
 
-		if (executor_.is_running())
-			executor_.begin_invoke([=]{tick();});
+		//if (executor_.is_running())
+		//	executor_.begin_invoke([=]{tick();});
 	}
 
 	std::wstring print() const
