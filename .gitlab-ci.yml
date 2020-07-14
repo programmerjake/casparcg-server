@@ -85,10 +85,14 @@ package-stretch:
         - package
 
 deploy-repo:
+  image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/buster-build:latest
   stage: deploy-repo
+  tags:
+    - docker
+    - casparcg
   only:
     - master
     - tags
   script:
-    - scp -r ./package debian.in2ip.net:./$CI_COMMIT_SHA
+    - scp -r ./package debian-repo@debian.in2ip.net:./$CI_COMMIT_SHA
     - ssh debian-repo@debian.in2ip.net "./dodeploy.sh $CI_COMMIT_SHA"
