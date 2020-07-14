@@ -55,8 +55,8 @@ package-buster:
     extends: .debian-buster
     script:
       - rm -Rf debian-build
-      - dch --local ~buster "Build for buster"
       - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
+      - dch --local ~buster "Build for buster"
       - DEB_BUILD_OPTIONS='parallel=12' gbp buildpackage -us -uc --git-ignore-new --git-debian-branch="$CI_COMMIT_REF_NAME" --git-upstream-tree=SLOPPY  --git-upstream-tag='v%(version)s' --git-export-dir=./debian-build
       - ls -slah debian-build
       - mkdir -p package/buster && cd debian-build && cp -t ../package/buster *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
@@ -73,8 +73,8 @@ package-stretch:
     extends: .debian-stretch
     script:
       - rm -Rf debian-build
-      - dch --local ~buster "Build for buster"
       - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
+      - dch --local ~buster "Build for buster"
       - DEB_BUILD_OPTIONS='parallel=12' gbp buildpackage -us -uc --git-ignore-new --git-debian-branch="$CI_COMMIT_REF_NAME" --git-upstream-tree=SLOPPY  --git-upstream-tag='v%(version)s' --git-export-dir=./debian-build
       - ls -slah debian-build
       - mkdir -p package/stretch && cd debian-build && cp -t ../package/stretch *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
