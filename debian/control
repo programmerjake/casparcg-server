@@ -5,6 +5,7 @@ Priority: optional
 Standards-Version: 4.3.0
 Build-Depends:  cmake,
                 debhelper (>= 10~),
+                dh-systemd,
                 libatk1.0-dev,
                 libavcodec-dev,
                 libavdevice-dev,
