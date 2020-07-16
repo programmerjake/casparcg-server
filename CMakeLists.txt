@@ -95,8 +95,6 @@ else()
 endif()
 add_definitions( -DGLEW_NO_GLU )
 
-set(RXCPP_INCLUDE_DIRS			"${DEPENDENCIES_FOLDER}/RxCpp/include")
-
 ## SFML ##
 if(USE_SYSTEM_SFML)
 	find_package(SFML REQUIRED COMPONENTS graphics window system)
