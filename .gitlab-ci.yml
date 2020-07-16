@@ -62,7 +62,7 @@ package-buster:
       - mkdir -p package/buster && cd debian-build && cp -t ../package/buster *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
     artifacts:
       untracked: false
-      expire_in: 30 days
+      expire_in: 24 hours
       paths:
         - package
 package-stretch:
@@ -80,7 +80,7 @@ package-stretch:
       - mkdir -p package/stretch && cd debian-build && cp -t ../package/stretch *.deb *.dsc *.xz && cp *.orig.tar.gz ../package
     artifacts:
       untracked: false
-      expire_in: 30 days
+      expire_in: 24 hours
       paths:
         - package
 
@@ -91,7 +91,6 @@ deploy-repo:
     - docker
     - casparcg
   only:
-    - master
     - tags
   script:
     - scp -r ./package debian-repo@debian.in2ip.net:./$CI_COMMIT_SHA
