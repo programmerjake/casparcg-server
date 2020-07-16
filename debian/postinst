@@ -1,6 +1,0 @@
-#!/bin/bash
-adduser --uid 6666 --disabled-password --gecos "" playout 
-usermod -a -G video,audio,dip,plugdev,netdev playout
-mkdir -p /var/log/casparcg
-mkdir -p /data/media/{template,thumbnail,fonts}
-chown -R playout:playout /var/log/casparcg /data/media

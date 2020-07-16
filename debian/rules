@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 %:
-	dh $@ --buildsystem=cmake --with systemd
+	dh $@ --buildsystem=cmake
 
 override_dh_clean:
 	dh_clean
@@ -10,5 +10,5 @@ override_dh_clean:
 override_dh_auto_configure:
 	dh_auto_configure -- -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_GTEST=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-override_dh_systemd_start:
-	dh_systemd_start --restart-after-upgrade || true
+override_dh_installinit:
+	dh_installinit --no-scripts
