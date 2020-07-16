@@ -24,7 +24,6 @@ add_precompiled_header(reroute stdafx.h FORCEINCLUDE)
 include_directories(..)
 include_directories(../..)
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${RXCPP_INCLUDE_DIRS})
 include_directories(${TBB_INCLUDE_DIRS})
 include_directories(${FFmpeg_INCLUDE_DIRS})
 

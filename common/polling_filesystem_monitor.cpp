@@ -37,7 +37,6 @@
 #include <tbb/concurrent_queue.h>
 
 #include "executor.h"
-#include "linq.h"
 
 namespace caspar {
 
@@ -120,7 +119,11 @@ public:
 		bool interested_in_created = static_cast<int>(events_mask_ & filesystem_event::CREATED) > 0;
 		bool interested_in_modified = static_cast<int>(events_mask_ & filesystem_event::MODIFIED) > 0;
 
-		auto filenames = cpplinq::from(files_).select(keys());
+		std::vector<boost::filesystem::path> filenames;
+		for (auto const& filename: files_) {
+			filenames.push_back(filename.first);
+		}
+		//auto filenames = cpplinq::from(files_).select(keys());
 		std::set<path> removed_files(filenames.begin(), filenames.end());
 		std::set<path> initial_files;
 
