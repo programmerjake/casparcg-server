@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e 
+
+. /usr/share/debconf/confmodule
+db_version 2.0 
+action="$1"
+umask 022 
+
+if [ "$action" = configure ]; then
+    if ! getent passwd playout > /dev/null; then
+        adduser --uid 6666 --disabled-password --gecos "" playout 
+        usermod -a -G video,audio,dip,plugdev,netdev playout
+    fi
+    mkdir -p /var/log/casparcg
+    mkdir -p /data/media/{template,thumbnail,fonts}
+    chown -R playout:playout /var/log/casparcg /data/media
+fi
+
+#DEBHELPER#
+
+db_stop
+
+exit 0
