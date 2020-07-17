@@ -43,7 +43,6 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/timer.hpp>
-#include <boost/thread/once.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <tbb/concurrent_queue.h>
@@ -97,9 +96,9 @@ public:
 void init_device()
 {
 	static std::unique_ptr<device> instance;
-	static boost::once_flag f = BOOST_ONCE_INIT;
+	static std::once_flag f;
 
-	boost::call_once(f, []{instance.reset(new device());});
+	std::call_once(f, []{instance.reset(new device());});
 }
 
 struct oal_consumer : public core::frame_consumer
@@ -108,7 +107,7 @@ struct oal_consumer : public core::frame_consumer
 
 	spl::shared_ptr<diagnostics::graph>				graph_;
 	boost::timer									perf_timer_;
-	tbb::atomic<int64_t>							presentation_age_;
+	std::atomic<int64_t>							presentation_age_;
 	int												channel_index_		= -1;
 
 	core::video_format_desc							format_desc_;

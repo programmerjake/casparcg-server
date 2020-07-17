@@ -36,7 +36,6 @@
 #include <core/help/help_repository.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <tbb/concurrent_queue.h>
@@ -98,7 +97,7 @@ public:
 	{
 		auto filename = filename_;
 
-		boost::thread async([frame, filename]
+		std::thread async([frame, filename]
 		{
 			ensure_gpf_handler_installed_for_thread("image-consumer");
 

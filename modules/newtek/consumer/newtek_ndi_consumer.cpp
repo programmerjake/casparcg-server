@@ -44,6 +44,8 @@
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/crc.hpp>
 
+#include <atomic>
+
 #include "../util/ndi.h"
 extern "C"
 {
@@ -91,14 +93,14 @@ struct newtek_ndi_consumer : public boost::noncopyable
     int                                  frame_no_;
     int64_t                              timebase_frame_no_;
     int64_t                              start_fps_measure_frame_no_;
-    tbb::atomic<bool>                    is_sending_;
-    tbb::atomic<bool>                    started_;
+    std::atomic<bool>                    is_sending_;
+    std::atomic<bool>                    started_;
     int64_t                              ndi_start_time_;
     int64_t                              last_print_time;
     int64_t                              ticktime_;
     int64_t                              next_tick_;
-    boost::thread                        thread_;
-    tbb::atomic<int64_t>                        current_encoding_delay_;
+    std::thread                        thread_;
+    std::atomic<int64_t>                        current_encoding_delay_;
     caspar::semaphore									ready_for_new_frames_	{ 0 };
     std::unique_ptr<SwsContext, std::function<void(SwsContext*)>>	sws_;
     std::vector<uint8_t, tbb::cache_aligned_allocator<uint8_t>>     send_frame_buffer_;
@@ -183,7 +185,7 @@ struct newtek_ndi_consumer : public boost::noncopyable
         ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
                               [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
 
-        thread_ = boost::thread([this]{run();});
+        thread_ = std::thread([this]{run();});
         ticktime_ = av_rescale_q(1000000LL, timebase_channel_, (AVRational){1,1});
         CASPAR_LOG(warning) << "Ticktime is " << ticktime_;
         graph_->set_text(print());

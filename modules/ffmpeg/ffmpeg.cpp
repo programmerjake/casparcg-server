@@ -38,10 +38,9 @@
 #include <core/system_info_provider.h>
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/thread/tss.hpp>
 #include <boost/bind.hpp>
 
-#include <tbb/recursive_mutex.h>
+#include <mutex>
 
 #if defined(_MSC_VER)
 #pragma warning (disable : 4244)
@@ -66,13 +65,13 @@ int ffmpeg_lock_callback(void **mutex, enum AVLockOp op)
 	if(!mutex)
 		return 0;
 
-	auto my_mutex = reinterpret_cast<tbb::recursive_mutex*>(*mutex);
+	auto my_mutex = reinterpret_cast<std::recursive_mutex*>(*mutex);
 
 	switch(op)
 	{
 		case AV_LOCK_CREATE:
 		{
-			*mutex = new tbb::recursive_mutex();
+			*mutex = new std::recursive_mutex();
 			break;
 		}
 		case AV_LOCK_OBTAIN:
@@ -109,14 +108,7 @@ static void sanitize(uint8_t *line)
 
 void log_callback(void* ptr, int level, const char* fmt, va_list vl)
 {
-	static boost::thread_specific_ptr<bool> print_prefix_tss;
-	auto print_prefix = print_prefix_tss.get();
-
-	if (!print_prefix)
-	{
-		print_prefix = new bool(true);
-		print_prefix_tss.reset(print_prefix);
-	}
+	static thread_local bool print_prefix = true;
 
 	char line[1024];
 	AVClass* avc= ptr ? *(AVClass**)ptr : NULL;
@@ -125,7 +117,7 @@ void log_callback(void* ptr, int level, const char* fmt, va_list vl)
 	line[0]=0;
 
 #undef fprintf
-	if(*print_prefix && avc)
+	if(print_prefix && avc)
 	{
 		if (avc->parent_log_context_offset)
 		{
@@ -138,7 +130,7 @@ void log_callback(void* ptr, int level, const char* fmt, va_list vl)
 
 	std::vsnprintf(line + strlen(line), sizeof(line) - strlen(line), fmt, vl);
 
-	*print_prefix = strlen(line) && line[strlen(line)-1] == '\n';
+	print_prefix = strlen(line) && line[strlen(line)-1] == '\n';
 
 	sanitize((uint8_t*)line);
 

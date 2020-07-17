@@ -37,8 +37,6 @@
 #include <common/os/filesystem.h>
 #include <common/future.h>
 
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/optional.hpp>
@@ -85,7 +83,7 @@ private:
 		bool					reusable_producer_instance;
 	};
 
-	mutable boost::mutex			mutex_;
+	mutable std::mutex			    mutex_;
 	std::map<std::wstring, record>	records_by_extension_;
 public:
 	void register_cg_producer(
@@ -96,7 +94,7 @@ public:
 			cg_producer_factory producer_factory,
 			bool reusable_producer_instance)
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		record rec
 		{
@@ -129,7 +127,7 @@ public:
 	{
 		auto producer_name = producer->name();
 
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		for (auto& elem : records_by_extension_)
 		{
@@ -186,7 +184,7 @@ public:
 
 		auto basepath = path(env::template_folder()) / path(filename);
 
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		for (auto& rec : records_by_extension_)
 		{
@@ -202,7 +200,7 @@ public:
 
 	bool is_cg_extension(const std::wstring& extension) const
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		return records_by_extension_.find(extension) != records_by_extension_.end();
 	}
@@ -223,7 +221,7 @@ private:
 
 		auto basepath = path(env::template_folder()) / path(filename);
 
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		for (auto& rec : records_by_extension_)
 		{

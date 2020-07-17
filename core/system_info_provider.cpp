@@ -24,38 +24,37 @@
 #include "system_info_provider.h"
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 
 #include <vector>
 #include <map>
+#include <mutex>
 
 namespace caspar { namespace core {
 
 struct system_info_provider_repository::impl
 {
-	mutable boost::mutex						mutex_;
+	mutable std::mutex						mutex_;
 	std::vector<system_info_provider>			info_providers_;
 	std::map<std::wstring, version_provider>	version_providers_;
 
 	void register_system_info_provider(system_info_provider provider)
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		info_providers_.push_back(std::move(provider));
 	}
 
 	void register_version_provider(const std::wstring& version_name, version_provider provider)
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		version_providers_.insert(std::make_pair(boost::algorithm::to_lower_copy(version_name), std::move(provider)));
 	}
 
 	void fill_information(boost::property_tree::wptree& info) const
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		for (auto& provider : info_providers_)
 			provider(info);
@@ -63,7 +62,7 @@ struct system_info_provider_repository::impl
 
 	std::wstring get_version(const std::wstring& version_name) const
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 		
 		auto found = version_providers_.find(boost::algorithm::to_lower_copy(version_name));
 
