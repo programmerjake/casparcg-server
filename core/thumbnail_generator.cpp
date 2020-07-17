@@ -27,12 +27,10 @@
 #include <iterator>
 #include <set>
 #include <future>
+#include <atomic>
 
-#include <boost/thread.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
-
-#include <tbb/atomic.h>
 
 #include <common/diagnostics/graph.h>
 #include <common/filesystem.h>
@@ -54,7 +52,7 @@ namespace caspar { namespace core {
 
 struct thumbnail_output
 {
-	tbb::atomic<int> sleep_millis;
+	std::atomic<int> sleep_millis;
 	std::function<void (const_frame)> on_send;
 
 	thumbnail_output(int sleep_millis)
@@ -67,7 +65,7 @@ struct thumbnail_output
 		int current_sleep = sleep_millis;
 
 		if (current_sleep > 0)
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(current_sleep));
+			std::this_thread::sleep_for(std::chrono::milliseconds(current_sleep));
 
 		on_send(std::move(frame));
 		on_send = nullptr;
@@ -272,10 +270,6 @@ public:
 				raw_frame = producer_registry_->create_thumbnail(frame_producer_dependencies(image_mixer_, {}, format_desc_, producer_registry_, cg_registry_), media_file.wstring());
 				media_info_repo_->remove(file.wstring());
 				media_info_repo_->get(file.wstring());
-			}
-			catch (const boost::thread_interrupted&)
-			{
-				throw;
 			}
 			catch (...)
 			{

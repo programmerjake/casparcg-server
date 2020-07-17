@@ -34,24 +34,26 @@
 #include "media_info.h"
 #include "media_info_repository.h"
 
+#include <mutex>
+
 namespace caspar { namespace core {
 
 class in_memory_media_info_repository : public media_info_repository
 {
-	boost::mutex mutex_;
+	std::mutex mutex_;
 	std::map<std::wstring, boost::optional<media_info>> info_by_file_;
 	std::vector<media_info_extractor> extractors_;
 public:
 	virtual void register_extractor(media_info_extractor extractor) override
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		extractors_.push_back(extractor);
 	}
 
 	virtual boost::optional<media_info> get(const std::wstring& file) override
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		auto iter = info_by_file_.find(file);
 
@@ -84,7 +86,7 @@ public:
 
 	virtual void remove(const std::wstring& file) override
 	{
-		boost::lock_guard<boost::mutex> lock(mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 
 		info_by_file_.erase(file);
 	}
