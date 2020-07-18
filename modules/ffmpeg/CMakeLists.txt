@@ -101,7 +101,6 @@ if(NOT USE_SYSTEM_FFMPEG)
                 		avdevice.so
 				swscale.so
 				swresample.so
-				postproc.so
 
 				ass
 				bluray
