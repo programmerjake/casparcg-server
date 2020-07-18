@@ -26,7 +26,6 @@
 #include <map>
 #include <vector>
 
-#include <boost/thread/mutex.hpp>
 #include <boost/foreach.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/case_conv.hpp>

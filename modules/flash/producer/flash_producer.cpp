@@ -54,8 +54,6 @@
 #include <boost/timer.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <tbb/spin_mutex.h>
-
 #include <functional>
 
 namespace caspar { namespace flash {
