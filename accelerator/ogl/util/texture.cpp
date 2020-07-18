@@ -124,7 +124,10 @@ public:
 
 	void attach()
 	{		
+		caspar::timer timer;
 		GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D, id_, 0));
+		if (timer.elapsed() > 0.02)
+			CASPAR_LOG(warning) << "[texture] Texture attach blocked: " << timer.elapsed();
 	}
 
 	void clear()
@@ -136,7 +139,6 @@ public:
 	void copy_from(buffer& source)
 	{
 		CASPAR_LOG_CALL(trace) << "texture::copy_from(buffer&) <- " << get_context();
-		source.unmap();
 		source.bind();
 		GL(glBindTexture(GL_TEXTURE_2D, id_));
 		GL(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, FORMAT[stride_], TYPE[stride_], NULL));
@@ -146,20 +148,17 @@ public:
 
 		GL(glBindTexture(GL_TEXTURE_2D, 0));
 		source.unbind();
-		source.map(); // Just map it back since map will orphan buffer.
 	}
 
 	void copy_to(buffer& dest)
 	{
 		CASPAR_LOG_CALL(trace) << "texture::copy_to(buffer&) <- " << get_context();
-		dest.unmap();
 		dest.bind();
 		GL(glBindTexture(GL_TEXTURE_2D, id_));
 		GL(glReadBuffer(GL_COLOR_ATTACHMENT0));
 		GL(glReadPixels(0, 0, width_, height_, FORMAT[stride_], READPIXELS_TYPE[stride_], NULL));
 		GL(glBindTexture(GL_TEXTURE_2D, 0));
 		dest.unbind();
-		GL(glFlush());
 	}
 };
 
