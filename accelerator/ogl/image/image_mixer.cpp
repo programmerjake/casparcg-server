@@ -115,7 +115,7 @@ public:
 			target_texture->attach();
 
 			return ogl_->copy_async(target_texture);
-		}));
+		}, task_priority::high_priority));
 	}
 
 private:
