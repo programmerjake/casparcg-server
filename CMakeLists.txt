@@ -69,7 +69,7 @@ else()
 	if(MSVC)
 		set(TBB_LIBRARIES optimized tbb debug tbb_debug)
 	else()
-		set(TBB_LIBRARIES tbb tbbmalloc tbbmalloc_proxy)
+		set(TBB_LIBRARIES tbb)
 	endif()
 	set(TBB_BIN_DIR				"${DEPENDENCIES_FOLDER}/tbb/bin/${PLATFORM_FOLDER_NAME}")
 	link_directories("${DEPENDENCIES_FOLDER}/tbb/lib/${PLATFORM_FOLDER_NAME}")
@@ -141,7 +141,6 @@ if(USE_SYSTEM_FFMPEG)
 		avfilter
 		avformat
 		avutil
-		postproc
 		swresample
 		swscale)
 else()

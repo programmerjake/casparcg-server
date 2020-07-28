@@ -128,9 +128,6 @@ else ()
 	target_link_libraries(common
 		"${Boost_LIBRARIES}"
 		X11
-		jpeg
-		sndfile
-		udev
 		Xrandr
 		pthread
 	)
