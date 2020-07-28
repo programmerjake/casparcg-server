@@ -71,7 +71,6 @@ set(HEADERS
 		forward.h
 		future.h
 		future_fwd.h
-		linq.h
 		lock.h
 		log.h
 		memory.h
@@ -96,7 +95,6 @@ add_precompiled_header(common stdafx.h FORCEINCLUDE)
 
 include_directories(..)
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${RXCPP_INCLUDE_DIRS})
 include_directories(${TBB_INCLUDE_DIRS})
 include_directories(${GLEW_INCLUDE_DIRS})
 

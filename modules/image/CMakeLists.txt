@@ -31,7 +31,6 @@ include_directories(..)
 include_directories(../..)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${FREEIMAGE_INCLUDE_DIRS})
-include_directories(${RXCPP_INCLUDE_DIRS})
 include_directories(${TBB_INCLUDE_DIRS})
 
 set_target_properties(image PROPERTIES FOLDER modules)
