@@ -58,14 +58,11 @@
 #include <boost/locale.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/future.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-#include <tbb/atomic.h>
-
+#include <atomic>
 #include <future>
 #include <set>
 
@@ -112,12 +109,12 @@ void print_system_info(const spl::shared_ptr<core::system_info_provider_reposito
 void do_run(
 		std::weak_ptr<caspar::IO::protocol_strategy<wchar_t>> amcp,
 		std::promise<bool>& shutdown_server_now,
-		tbb::atomic<bool>& should_wait_for_keypress)
+		std::atomic<bool>& should_wait_for_keypress)
 {
 	ensure_gpf_handler_installed_for_thread("Console thread");
 };
 
-bool run(const std::wstring& config_file_name, tbb::atomic<bool>& should_wait_for_keypress)
+bool run(const std::wstring& config_file_name, std::atomic<bool>& should_wait_for_keypress)
 {
 	std::promise<bool> shutdown_server_now;
 	std::future<bool> shutdown_server = shutdown_server_now.get_future();
@@ -157,7 +154,7 @@ bool run(const std::wstring& config_file_name, tbb::atomic<bool>& should_wait_fo
 
 	// Use separate thread for the blocking console input, will be terminated
 	// anyway when the main thread terminates.
-	boost::thread stdin_thread(std::bind(do_run, weak_amcp, std::ref(shutdown_server_now), std::ref(should_wait_for_keypress)));	//compiler didn't like lambda here...
+	std::thread stdin_thread(std::bind(do_run, weak_amcp, std::ref(shutdown_server_now), std::ref(should_wait_for_keypress)));	//compiler didn't like lambda here...
 	stdin_thread.detach();
 	bool should_restart = shutdown_server.get();
 	amcp.reset();
@@ -236,7 +233,7 @@ int main(int argc, char** argv)
 		// Setup console window.
 		setup_console_window();
 
-		tbb::atomic<bool> should_wait_for_keypress;
+		std::atomic<bool> should_wait_for_keypress;
 		should_wait_for_keypress = false;
 		auto should_restart = run(config_file_name, should_wait_for_keypress);
 		return_code = should_restart ? 5 : 0;
@@ -266,9 +263,9 @@ int main(int argc, char** argv)
 	{
 		CASPAR_LOG_CURRENT_EXCEPTION();
 		CASPAR_LOG(fatal) << L"Unhandled exception in main thread. Please report this error on the CasparCG forums (www.casparcg.com/forum).";
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		std::wcout << L"\n\nCasparCG will automatically shutdown. See the log file located at the configured log-file folder for more information.\n\n";
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(4000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(4000));
 	}
 
 	return return_code;

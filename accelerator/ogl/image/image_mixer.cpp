@@ -41,7 +41,6 @@
 #include <GL/glew.h>
 
 #include <boost/range/algorithm_ext/erase.hpp>
-#include <boost/thread/future.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -85,7 +84,7 @@ public:
 	{
 		if(layers.empty())
 		{ // Bypass GPU with empty frame.
-			static const cache_aligned_vector<uint8_t> buffer(10000 * 10000 * 8, 0);
+			static const std::vector<uint8_t> buffer(10000 * 10000 * 8, 0);
 			return make_ready_future(array<const std::uint8_t>(buffer.data(), format_desc.size, true));
 		}
 
