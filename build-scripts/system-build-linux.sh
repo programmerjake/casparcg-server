@@ -28,7 +28,6 @@ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 -DUSE_SYSTEM_FREEIMAGE=ON \
 -DUSE_SYSTEM_OPENAL=ON    \
 -DUSE_SYSTEM_SFML=ON      \
--DUSE_SYSTEM_GTEST=ON     \
 -DUSE_SYSTEM_FONTS=ON     \
 .. || fail "cmake failed"
 
