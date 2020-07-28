@@ -30,6 +30,8 @@
 #include "amcp_command_repository.h"
 #include "AMCPCommandQueue.h"
 
+#include <accelerator/ogl/util/device.h>
+
 #include <common/env.h>
 
 #include <common/log.h>
