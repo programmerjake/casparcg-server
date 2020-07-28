@@ -189,6 +189,11 @@ struct newtek_ndi_consumer : public boost::noncopyable
         ticktime_ = av_rescale_q(1000000LL, timebase_channel_, (AVRational){1,1});
         CASPAR_LOG(warning) << "Ticktime is " << ticktime_;
         graph_->set_text(print());
+
+        for (int i = 0; i < 7; i++) {
+            auto frame = core::const_frame::empty();
+            frame_buffer_.try_push(frame);
+        }
     }
 
     ~newtek_ndi_consumer() {
@@ -232,9 +237,9 @@ struct newtek_ndi_consumer : public boost::noncopyable
         }
 
         is_sending_ = true;
-        while (!started_) {
+        /*while (!started_) {
             usleep(500);
-        }
+        }*/
 
         ndi_start_time_ = last_print_time =GetTimeUsec();
         next_tick_ = ndi_start_time_ + ticktime_;
@@ -243,7 +248,6 @@ struct newtek_ndi_consumer : public boost::noncopyable
             ready_for_new_frames_.release();
             graph_->set_value("ndi-tick", ndi_tick_timer_.elapsed() * format_desc_.fps * 0.5);
             ndi_tick_timer_.restart();
-            //executor_.begin_invoke([=] { ndi_send_frame();});
             ndi_send_frame();
             WaitNextTick();
         }
@@ -257,14 +261,14 @@ struct newtek_ndi_consumer : public boost::noncopyable
 		    graph_->set_tag(diagnostics::tag_severity::WARNING, "dropped-frame");
 	    }
         frame_no_++;
-        if (frame_no_ <= 6) {
+        /*if (frame_no_ <= 6) {
             if (frame_no_ == 6) {
                 started_ = true;
                 return make_ready_future(true);
             }
             else 
                 return make_ready_future(true);
-        }
+        }*/
             
         graph_->set_value("buffered-frames", static_cast<double>(frame_buffer_.size() + 0.001) / frame_buffer_.capacity());
         auto send_completion = spl::make_shared<std::promise<bool>>();
@@ -309,9 +313,22 @@ struct newtek_ndi_consumer : public boost::noncopyable
         //av_image_fill_arrays(dest_data, dst_linesize, &send_frame_buffer_.front(), AV_PIX_FMT_UYVY422, format_desc_.width, format_desc_.height, 16);
         //sws_scale(sws_.get(), src_data, src_linesize, 0, format_desc_.height, dest_data, dst_linesize);
         //ndi_video_frame_.p_data = &send_frame_buffer_.front();
-        ndi_video_frame_.p_data = const_cast<uint8_t*>(frame.image_data().begin());
+
+        core::audio_buffer a_data = frame.audio_data();
+        uint8_t* v_data = const_cast<uint8_t*>(frame.image_data().begin());
+        if (frame.image_data().empty()) {
+            CASPAR_LOG(error) << "Empty v_data, assuming startup buffer fill";
+            v_data = (uint8_t*)calloc(4, format_desc_.height * format_desc_.width);
+        }
+        if (a_data.empty()) {
+            CASPAR_LOG(error) << "Empty a_data, assuming startup buffer fill";
+            spl::shared_ptr<core::mutable_audio_buffer>buf(new core::mutable_audio_buffer(format_desc_.audio_cadence[timebase_frame_no_ % format_desc_.audio_cadence.size()] * channel_layout_.num_channels, 0));
+            a_data = core::audio_buffer(buf->data(), buf->size(), true, std::move(buf));
+        }
+
+        ndi_video_frame_.p_data = v_data;
         ndi_lib_->NDIlib_send_send_video_v2(*ndi_send_instance_, &ndi_video_frame_);
-        auto audio_buffer = channel_remapper_->mix_and_rearrange(frame.audio_data());
+        auto audio_buffer = channel_remapper_->mix_and_rearrange(a_data);
         ndi_audio_frame_.p_data = const_cast<int*>(audio_buffer.data());
         ndi_audio_frame_.no_samples = static_cast<int>(audio_buffer.size() / out_channel_layout_.num_channels);
         ndi_lib_->NDIlib_util_send_send_audio_interleaved_32s(*ndi_send_instance_, &ndi_audio_frame_);
@@ -351,7 +368,7 @@ struct newtek_ndi_consumer : public boost::noncopyable
         return current_encoding_delay_;
     }
 
-    bool has_synchronization_clock() const { return started_; }
+    bool has_synchronization_clock() const { return true; }
 
     core::audio_channel_layout get_adjusted_layout(const core::audio_channel_layout& in_layout) const
 	{
