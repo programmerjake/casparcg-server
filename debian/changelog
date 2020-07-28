@@ -1,3 +1,20 @@
+casparcg-server (2.1.in2ip.03.6) UNRELEASED; urgency=medium
+
+  [ Gijs Peskens ]
+  * Backport: refactor TBB/Boost to std
+  * Fix stretch build
+  * Remove some unused includes
+  * Remove some libs debian packager is complaining about as not needed
+  * Import OpenGL performance fixes from nrkno
+  * Systemd service autorestart
+  * Remove unit-tests, they where not being used
+  * Pre-buffer NDI frames and run from start with synchroclock enabled
+  * Backport: remove RXCPP
+  * Update CI config
+  * NDI consumer constructor in executor (like Decklink)
+
+ -- root <root@lurch-test>  Tue, 28 Jul 2020 11:49:33 +0000
+
 casparcg-server (2.1.in2ip.03.5-5) unstable; urgency=medium
 
   [ Gijs Peskens ]
