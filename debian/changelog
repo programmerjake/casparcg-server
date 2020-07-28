@@ -1,4 +1,4 @@
-casparcg-server (2.1.in2ip.03.6) UNRELEASED; urgency=medium
+casparcg-server (2.1.in2ip.03.6-1) unstable; urgency=medium
 
   [ Gijs Peskens ]
   * Backport: refactor TBB/Boost to std
