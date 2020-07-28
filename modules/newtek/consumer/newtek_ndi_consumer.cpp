@@ -396,6 +396,7 @@ struct newtek_ndi_consumer : public boost::noncopyable
 			const bool								allow_fields_;
 			int										channel_index_;
             core::monitor::subject                  monitor_subject_;
+            executor								executor_;
 
 		public:
 
@@ -407,11 +408,15 @@ struct newtek_ndi_consumer : public boost::noncopyable
                 , out_channel_layout_(out_channel_layout)
                 , allow_fields_(allow_fields)
                 , failover_(failover)
+                , executor_(print())
 			{	}
 
 		    void initialize(const core::video_format_desc& format_desc, const core::audio_channel_layout& channel_layout, int channel_index) override
 			{
-				consumer_.reset(new newtek_ndi_consumer(ndi_name_, allow_fields_, out_channel_layout_, failover_, groups_, format_desc, channel_layout, channel_index));
+				executor_.invoke([=]
+                {
+                    consumer_.reset(new newtek_ndi_consumer(ndi_name_, allow_fields_, out_channel_layout_, failover_, groups_, format_desc, channel_layout, channel_index));
+                });
 			}
 
             std::wstring default_ndi_name() const
