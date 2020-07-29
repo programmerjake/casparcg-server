@@ -12,7 +12,11 @@ before_script:
   - ssh debian-repo@debian.in2ip.net "/bin/true"
   - export CCACHE_BASEDIR=${PWD}
   - CACHE_DIR=${PWD}/ccache
+  - mkdir -p ccache
   - printf 'DEBUILD_PREPEND_PATH=/usr/lib/ccache\nDEBUILD_PRESERVE_ENVVARS=CCACHE_DIR,CCACHE_BASEDIR' > ~/.devscripts
+
+after_script:
+  - ccache -s
 
 .debian-buster:
     image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/buster-build:latest
