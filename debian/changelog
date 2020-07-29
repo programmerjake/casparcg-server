@@ -1,3 +1,12 @@
+casparcg-server (2.1.in2ip.03.8-1) unstable; urgency=medium
+
+  [ Gijs Peskens ]
+  * Revert "Merge remote-tracking branch 'remotes/origin/opengl-nrkno' into HEAD"
+  * Run at lower RT prio's create NDI sender after setting prio to run it at RT prio
+  * Remove NICE
+
+ -- Gijs Peskens <gijs@in2ip.nl>  Wed, 29 Jul 2020 15:34:40 +0200
+
 casparcg-server (2.1.in2ip.03.7-1) unstable; urgency=medium
 
   [ Gijs Peskens ]
