@@ -210,8 +210,8 @@ struct server::impl : boost::noncopyable
 		setup_osc(env::properties());
 		CASPAR_LOG(info) << L"Initialized osc.";
 
-		start_initial_media_info_scan();
-		CASPAR_LOG(info) << L"Started initial media information retrieval.";
+		//start_initial_media_info_scan();
+		//CASPAR_LOG(info) << L"Started initial media information retrieval.";
 	}
 
 	~impl()
