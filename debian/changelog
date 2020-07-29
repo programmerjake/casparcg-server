@@ -1,3 +1,10 @@
+casparcg-server (2.1.in2ip.03.7-1) unstable; urgency=medium
+
+  [ Gijs Peskens ]
+  * Disable initial media scanner
+
+ -- Gijs Peskens <gijs@in2ip.nl>  Wed, 29 Jul 2020 14:28:23 +0200
+
 casparcg-server (2.1.in2ip.03.6-1) unstable; urgency=medium
 
   [ Gijs Peskens ]
@@ -13,7 +20,7 @@ casparcg-server (2.1.in2ip.03.6-1) unstable; urgency=medium
   * Update CI config
   * NDI consumer constructor in executor (like Decklink)
 
- -- root <root@lurch-test>  Tue, 28 Jul 2020 11:49:33 +0000
+ -- Gijs Peskens <gijs@in2ip.nl>  Tue, 28 Jul 2020 11:49:33 +0000
 
 casparcg-server (2.1.in2ip.03.5-5) unstable; urgency=medium
 
