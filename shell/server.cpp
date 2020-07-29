@@ -26,7 +26,6 @@
 #include "default_audio_config.h"
 
 #include <accelerator/accelerator.h>
-#include <accelerator/ogl/util/device.h>
 
 #include <common/env.h>
 #include <common/except.h>
@@ -199,8 +198,6 @@ struct server::impl : boost::noncopyable
 		setup_channels(env::properties());
 		CASPAR_LOG(info) << L"Initialized channels.";
 
-		preallocate_buffers(env::properties());
-
 		setup_thumbnail_generation(env::properties());
 		CASPAR_LOG(info) << L"Initialized thumbnail generator.";
 
@@ -238,45 +235,6 @@ struct server::impl : boost::noncopyable
 
 		uninitialize_modules();
 		core::diagnostics::osd::shutdown();
-	}
-
-	void preallocate_buffers(const boost::property_tree::wptree& pt)
-	{
-		using boost::property_tree::wptree;
-
-		auto device = accelerator_.get_ogl_device();
-		auto prealloc_config = pt.get_child_optional(L"configuration.opengl.preallocate");
-		if (device && prealloc_config) {
-			std::vector<caspar::array<uint8_t>> buffers;
-			std::vector<std::shared_ptr<accelerator::ogl::texture>> textures;
-
-			int allocation_count = 0;
-
-			for (auto& xml_preallocate : pt | witerate_children(L"configuration.opengl.preallocate") | welement_context_iteration) {
-				const auto attrs = xml_preallocate.second.get_child(L"<xmlattr>");
-
-				const auto width = attrs.get(L"width", 0);
-				const auto height = attrs.get(L"height", 0);
-				const auto depth = attrs.get(L"depth", 0);
-				const auto count = attrs.get(L"count", 0);
-				const auto mipmapped = attrs.get(L"mipmapped", false);
-
-				if (width == 0 || height == 0 || depth == 0) {
-					CASPAR_LOG(warning) << L"Invalid preallocated buffer size: " << width << L"x" << height << L"(" << depth << L")";
-				} else if (count > 0) {
-					device->allocate_buffers(count, width, height, depth, mipmapped, false);
-					allocation_count += count;
-				}
-			}
-
-			// TODO - optional/configurable?
-			for (auto& ch : channels_) {
-				device->allocate_buffers(10, ch->video_format_desc().width, ch->video_format_desc().height, 4, false, true);
-				allocation_count += 10;
-			}
-
-			CASPAR_LOG(info) << L"Preallocated " << allocation_count << L" buffers";
-		}
 	}
 
 	void setup_audio_config(const boost::property_tree::wptree& pt)

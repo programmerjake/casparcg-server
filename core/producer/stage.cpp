@@ -113,10 +113,6 @@ public:
 		graph_->set_value("produce-time", frame_timer.elapsed()*format_desc.fps*0.5);
 		*monitor_subject_ << monitor::message("/profiler/time") % frame_timer.elapsed() % (1.0/format_desc.fps);
 
-		if (frame_timer.elapsed() > (1.0 / format_desc.fps)) {
-			CASPAR_LOG(warning) << L"[channel] Performance warning. Produce blocked: " << frame_timer.elapsed();
-		}
-
 		return frames;
 	}
 
