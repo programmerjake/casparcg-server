@@ -10,7 +10,9 @@ before_script:
   - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
   - chmod 644 ~/.ssh/known_hosts
   - ssh debian-repo@debian.in2ip.net "/bin/true"
-  - printf 'DEBUILD_PREPEND_PATH=/usr/lib/ccache\nDEBUILD_PRESERVE_ENVVARS=CCACHE_DIR' > ~/.devscripts
+  - export CCACHE_BASEDIR=${PWD}
+  - CACHE_DIR=${PWD}/ccache
+  - printf 'DEBUILD_PREPEND_PATH=/usr/lib/ccache\nDEBUILD_PRESERVE_ENVVARS=CCACHE_DIR,CCACHE_BASEDIR' > ~/.devscripts
 
 .debian-buster:
     image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/buster-build:latest
@@ -21,7 +23,7 @@ before_script:
     cache:
       key: "buster"
       paths:
-        - /ccache
+        - ccache/
 
 
 .debian-stretch:
@@ -33,7 +35,7 @@ before_script:
     cache:
       key: "stretch"
       paths:
-        - /ccache
+        - ccache/
 
 
 build-buster:
