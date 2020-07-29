@@ -143,24 +143,6 @@ struct newtek_ndi_consumer : public boost::noncopyable
 
         channel_remapper_.reset(new core::audio_channel_remapper(channel_layout_, out_channel_layout_));
 
-        NDIlib_send_create_t NDI_send_create_desc;
-
-        auto tmp_name                   = u8(name_);
-        NDI_send_create_desc.p_ndi_name = tmp_name.c_str();
-        if (!groups_.empty()) {
-            auto tmp_groups             = u8(groups_);
-            NDI_send_create_desc.p_groups = tmp_groups.c_str();
-        }
-        NDI_send_create_desc.clock_audio = false;
-        NDI_send_create_desc.clock_video = false;
-
-        if (!failover_.empty()) {
-            auto tmp_failover = u8(failover_);
-            NDIlib_source_t NDI_failover_source {};
-            NDI_failover_source.p_ndi_name = tmp_failover.c_str();
-            ndi_lib_->NDIlib_send_set_failover(*ndi_send_instance_, &NDI_failover_source); 
-        }
-
         timebase_channel_.num = format_desc_.duration;
         timebase_channel_.den = format_desc_.time_scale;
         timebase_ndi_.num = 10000000LL;
@@ -181,9 +163,6 @@ struct newtek_ndi_consumer : public boost::noncopyable
         ndi_audio_frame_.reference_level = 0;
         ndi_audio_frame_.no_channels = out_channel_layout_.num_channels;
         ndi_audio_frame_.sample_rate = format_desc_.audio_sample_rate;
-
-        ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
-                              [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
 
         thread_ = std::thread([this]{run();});
         ticktime_ = av_rescale_q(1000000LL, timebase_channel_, (AVRational){1,1});
@@ -229,12 +208,33 @@ struct newtek_ndi_consumer : public boost::noncopyable
 
         pthread_getschedparam(threadID, &policy, &param);
 
-        policy = SCHED_RR;
-        param.sched_priority = 99;
+        policy = SCHED_FIFO;
+        param.sched_priority = 2;
 
         if (retcode = pthread_setschedparam(threadID, policy, &param)) {
-            fprintf(stderr, "Failed to set prio return code: %i!\n", retcode);
+            CASPAR_LOG(error) << "Failed to set RT prio for NDI thread to 2";
         }
+
+        NDIlib_send_create_t NDI_send_create_desc;
+
+        auto tmp_name                   = u8(name_);
+        NDI_send_create_desc.p_ndi_name = tmp_name.c_str();
+        if (!groups_.empty()) {
+            auto tmp_groups             = u8(groups_);
+            NDI_send_create_desc.p_groups = tmp_groups.c_str();
+        }
+        NDI_send_create_desc.clock_audio = false;
+        NDI_send_create_desc.clock_video = false;
+
+        if (!failover_.empty()) {
+            auto tmp_failover = u8(failover_);
+            NDIlib_source_t NDI_failover_source {};
+            NDI_failover_source.p_ndi_name = tmp_failover.c_str();
+            ndi_lib_->NDIlib_send_set_failover(*ndi_send_instance_, &NDI_failover_source); 
+        }
+
+        ndi_send_instance_ = {new NDIlib_send_instance_t(ndi_lib_->NDIlib_send_create(&NDI_send_create_desc)),
+                        [this](auto p) { this->ndi_lib_->NDIlib_send_destroy(*p); }};
 
         is_sending_ = true;
         /*while (!started_) {

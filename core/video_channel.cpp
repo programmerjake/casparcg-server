@@ -122,9 +122,12 @@ public:
 			pthread_getschedparam(threadID, &policy, &param);
 
 			policy = SCHED_FIFO;
-			param.sched_priority = 99;
+			param.sched_priority = 5;
 
-			pthread_setschedparam(threadID, policy, &param);
+			if (retcode = pthread_setschedparam(threadID, policy, &param)) {
+				CASPAR_LOG(error) << "Failed to set RT prio for Video Channel thread to 5";
+			}
+
 			while (!abort_request_) {
 				tick();
 			}
