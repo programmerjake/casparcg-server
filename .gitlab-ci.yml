@@ -10,6 +10,7 @@ before_script:
   - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
   - chmod 644 ~/.ssh/known_hosts
   - ssh debian-repo@debian.in2ip.net "/bin/true"
+  - printf 'DEBUILD_PREPEND_PATH=/usr/lib/ccache\nDEBUILD_PRESERVE_ENVVARS=CCACHE_DIR' > ~/.devscripts
 
 .debian-buster:
     image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/buster-build:latest
@@ -17,6 +18,11 @@ before_script:
     tags: 
         - docker
         - casparcg
+    cache:
+      key: "buster"
+      paths:
+        - /ccache
+
 
 .debian-stretch:
     image: gitlab-01.in2ip.nl:5050/odmanaged/playout-platform/casparcgserver/stretch-build:latest
@@ -24,23 +30,20 @@ before_script:
     tags:
         - docker
         - casparcg
+    cache:
+      key: "stretch"
+      paths:
+        - /ccache
+
 
 build-buster:
     extends: .debian-buster
-    cache:
-      key: "buster-build-$CI_COMMIT_REF_SLUG"
-      paths:
-        - build
     script:
       - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - make -j8
 
 build-stretch:
     extends: .debian-stretch
-    cache:
-      key: "stretch-build-$CI_COMMIT_REF_SLUG"
-      paths:
-        - build
     script:
       - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - make -j8
