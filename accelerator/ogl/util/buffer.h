@@ -52,6 +52,9 @@ public:
 	// Methods
 
 	buffer& operator=(buffer&& other);
+	
+	void map();
+	void unmap();
 
 	void bind() const;
 	void unbind() const;
