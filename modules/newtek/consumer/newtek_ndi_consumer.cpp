@@ -287,9 +287,9 @@ struct newtek_ndi_consumer : public boost::noncopyable
         auto frame = core::const_frame::empty();
         frame_buffer_.pop(frame);
 
-        int64_t timecode = av_rescale_q(timebase_frame_no_, timebase_channel_, timebase_ndi_);
-        ndi_audio_frame_.timecode = timecode;
-        ndi_video_frame_.timecode = timecode;
+        //int64_t timecode = av_rescale_q(timebase_frame_no_, timebase_channel_, timebase_ndi_);
+        //ndi_audio_frame_.timecode = timecode;
+        //ndi_video_frame_.timecode = timecode;
         int64_t now = GetTimeUsec();
 
         if ((now - last_print_time) > (60 * 1000000LL) ) {
