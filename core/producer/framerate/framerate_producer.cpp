@@ -205,8 +205,8 @@ class framerate_producer : public frame_producer_base
 			const boost::rational<int64_t>& distance)>	interpolator_					= drop_or_repeat;
 
 	boost::rational<std::int64_t>						current_frame_number_			= 0;
-	draw_frame											previous_frame_					= draw_frame::empty();
-	draw_frame											next_frame_						= draw_frame::empty();
+        std::pair<uint32_t, draw_frame>									previous_frame_					= std::make_pair(0, draw_frame::empty());
+        std::pair<uint32_t, draw_frame>									next_frame_						= std::make_pair(0, draw_frame::empty());
 	mutable_audio_buffer								audio_samples_;
 
 	unsigned int										output_repeat_					= 0;
@@ -327,7 +327,7 @@ public:
 		if (!is_initialized())
 			return 0;
 
-		auto source_frame_number = source_->frame_number() - 1; // next frame already received
+		auto source_frame_number = previous_frame_.first; // next frame already received
 		auto multiple = boost::rational_cast<double>(1 / get_speed() * (output_repeat_ != 0 ? 2 : 1));
 
 		return static_cast<uint32_t>(source_frame_number * multiple);
@@ -356,17 +356,17 @@ private:
 			return attach_sound(frame);
 		}
 
-		if (previous_frame_ == draw_frame::empty())
+		if (previous_frame_.second == draw_frame::empty())
 			previous_frame_ = pop_frame_from_source();
 
 		auto current_frame_number	= current_frame_number_;
 		auto distance				= current_frame_number_ - boost::rational_cast<int64_t>(current_frame_number_);
 		bool needs_next				= distance > 0 || !enough_sound();
 
-		if (needs_next && next_frame_ == draw_frame::empty())
+		if (needs_next && next_frame_.second == draw_frame::empty())
 			next_frame_ = pop_frame_from_source();
 
-		auto result = interpolator_(previous_frame_, next_frame_, distance);
+		auto result = interpolator_(previous_frame_.second, next_frame_.second, distance);
 
 		auto next_frame_number		= current_frame_number_ += get_speed();
 		auto integer_current_frame	= boost::rational_cast<std::int64_t>(current_frame_number);
@@ -389,7 +389,7 @@ private:
 
 		for (std::int64_t i = 0; i < num_frames; ++i)
 		{
-			if (next_frame_ == draw_frame::empty())
+			if (next_frame_.second == draw_frame::empty())
 				previous_frame_ = pop_frame_from_source();
 			else
 			{
@@ -405,9 +405,10 @@ private:
 		return speed_ * user_speed_.fetch();
 	}
 
-	draw_frame pop_frame_from_source()
+	std::pair<uint32_t, draw_frame> pop_frame_from_source()
 	{
 		auto frame = source_->receive();
+                auto frame_number = source_->frame_number();
 		update_source_framerate();
 
 		if (user_speed_.fetch() == 1)
@@ -439,7 +440,7 @@ private:
 
 		frame.transform().audio_transform.volume = 0.0;
 
-		return frame;
+		return std::make_pair(frame_number, frame);
 	}
 
 	draw_frame attach_sound(draw_frame frame)
