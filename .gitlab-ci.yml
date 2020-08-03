@@ -13,7 +13,9 @@ before_script:
   - export CCACHE_BASEDIR=${PWD}
   - CACHE_DIR=${PWD}/ccache
   - mkdir -p ccache
-  - printf 'DEBUILD_PREPEND_PATH=/usr/lib/ccache\nDEBUILD_PRESERVE_ENVVARS=CCACHE_DIR,CCACHE_BASEDIR' > ~/.devscripts
+  - export DEBUILD_PREPEND_PATH=/usr/lib/ccache
+  - export DEBUILD_PRESERVE_ENVVARS=CCACHE_DIR,CCACHE_BASEDIR
+  - export PATH=/usr/lib/cache:$PATH
 
 after_script:
   - ccache -s
@@ -45,13 +47,13 @@ after_script:
 build-buster:
     extends: .debian-buster
     script:
-      - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - make -j8
 
 build-stretch:
     extends: .debian-stretch
     script:
-      - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - mkdir -p build && cd build && cmake .. -G "Unix Makefiles" -DUSE_SYSTEM_BOOST=ON -DUSE_SYSTEM_FFMPEG=ON -DUSE_SYSTEM_TBB=ON -DUSE_SYSTEM_GLEW=ON -DUSE_SYSTEM_FREETYPE=ON -DUSE_SYSTEM_FREEIMAGE=ON -DUSE_SYSTEM_OPENAL=ON -DUSE_SYSTEM_SFML=ON -DUSE_SYSTEM_FONTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - make -j8
 
 package-buster:
