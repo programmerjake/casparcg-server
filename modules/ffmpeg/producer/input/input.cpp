@@ -162,6 +162,10 @@ struct input::impl : boost::noncopyable
 		return (buffer_size_ > MAX_BUFFER_SIZE || buffer_.size() > get_max_buffer_count()) && buffer_.size() > get_min_buffer_count();
 	}
 
+        bool empty() const {
+            return buffer_.empty();
+        }
+
 	void tick()
 	{
 		if(!executor_.is_running())
@@ -374,6 +378,7 @@ input::input(const spl::shared_ptr<diagnostics::graph>& graph, const std::wstrin
 	: impl_(new impl(graph, url_or_file, loop, in, out, thumbnail_mode, vid_params)){}
 bool input::eof() const {return !impl_->executor_.is_running();}
 bool input::try_pop(std::shared_ptr<AVPacket>& packet){return impl_->try_pop(packet);}
+bool input::buffer_empty() const { return impl_->empty(); }
 spl::shared_ptr<AVFormatContext> input::context(){return impl_->format_context_;}
 void input::in(uint32_t value){impl_->in_ = value;}
 uint32_t input::in() const{return impl_->in_;}

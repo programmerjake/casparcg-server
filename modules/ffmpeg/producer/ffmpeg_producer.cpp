@@ -35,6 +35,7 @@
 #include <common/param.h>
 #include <common/diagnostics/graph.h>
 #include <common/future.h>
+#include <common/executor.h>
 
 #include <core/frame/draw_frame.h>
 #include <core/help/help_repository.h>
@@ -44,6 +45,7 @@
 #include <core/frame/frame_factory.h>
 
 #include <future>
+#include <mutex>
 #include <queue>
 
 namespace caspar { namespace ffmpeg {
@@ -94,12 +96,17 @@ struct ffmpeg_producer : public core::frame_producer_base
 	std::vector<std::unique_ptr<audio_decoder>>			audio_decoders_;
 	std::unique_ptr<frame_muxer>						muxer_;
 
+    caspar::executor worker_;
+    std::atomic<bool> abort_;
+
 	const boost::rational<int>							framerate_;
 	const bool											thumbnail_mode_;
 
 	core::draw_frame									last_frame_;
 
 	std::queue<std::pair<core::draw_frame, uint32_t>>	frame_buffer_;
+    std::mutex              buffer_mutex_;
+    std::condition_variable_any buffer_cond_;
 
 	int64_t												frame_number_				= 0;
 	uint32_t											file_frame_number_			= 0;
@@ -119,12 +126,15 @@ public:
 		, frame_factory_(frame_factory)
 		, initial_logger_disabler_(temporary_enable_quiet_logging_for_thread(thumbnail_mode))
 		, input_(graph_, url_or_file, loop, in, out, thumbnail_mode, vid_params)
+                , worker_(L"FFmpeg worker - " + filename_)
+                , abort_(false)
 		, framerate_(read_framerate(*input_.context(), format_desc.framerate))
 		, thumbnail_mode_(thumbnail_mode)
 		, last_frame_(core::draw_frame::empty())
 	{
 		graph_->set_color("frame-time", diagnostics::color(0.1f, 1.0f, 0.1f));
 		graph_->set_color("underflow", diagnostics::color(0.6f, 0.3f, 0.9f));
+        graph_->set_text(print());
 		diagnostics::register_graph(graph_);
 
 		try
@@ -214,7 +224,27 @@ public:
 			out = std::min(out, nb_frames);
 			input_.out(out);
 		}
+
+                if (!thumbnail_mode) {
+                    worker_.begin_invoke([=]() {
+                        while (!abort_) {
+                            bool got_frame = try_decode_frame();
+
+                            // If end of file, then abort the loop
+                            if (input_.eof() && input_.buffer_empty() && !got_frame) {
+                                return;
+                            }
+                        }
+
+                    });
+                }
 	}
+
+        ~ffmpeg_producer() {
+            abort_ = true;
+            buffer_cond_.notify_all();
+            worker_.wait();
+        }
 
 	// frame_producer
 
@@ -223,9 +253,22 @@ public:
 		return render_frame().first;
 	}
 
+        core::draw_frame first_frame() 
+        {
+            std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
+            if (frame_buffer_.empty()) {
+                return core::draw_frame::empty();
+            }
+
+            return core::draw_frame::still(frame_buffer_.front().first);
+        }
+
 	core::draw_frame last_frame() override
 	{
-		return core::draw_frame::still(last_frame_);
+            if (last_frame_ == core::draw_frame::empty())
+                return last_frame_;
+
+            return core::draw_frame::still(last_frame_);
 	}
 
 	core::constraints& pixel_constraints() override
@@ -246,33 +289,41 @@ public:
 		frame_timer_.restart();
 		auto disable_logging = temporary_enable_quiet_logging_for_thread(thumbnail_mode_);
 
-		for (int n = 0; n < 16 && frame_buffer_.size() < 2; ++n)
-			try_decode_frame();
+                if (thumbnail_mode_) {
+                    for (int n = 0; n < 16 && frame_buffer_.size() < 2; ++n)
+                        try_decode_frame();
+                }
 
 		graph_->set_value("frame-time", frame_timer_.elapsed() * out_fps() *0.5);
 
-		if (frame_buffer_.empty())
-		{
-			if (input_.eof())
-			{
-				send_osc();
-				return std::make_pair(last_frame(), -1);
-			}
-			else if (!is_url())
-			{
-				graph_->set_tag(diagnostics::tag_severity::WARNING, "underflow");
-				send_osc();
-				return std::make_pair(last_frame_, -1);
-			}
-			else
-			{
-				send_osc();
-				return std::make_pair(last_frame_, -1);
-			}
-		}
+                std::pair<core::draw_frame, uint32_t> frame;
+                {
+                    std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
+                    if (frame_buffer_.empty())
+                    {
+                        if (input_.eof())
+                        {
+                            send_osc();
+                            return std::make_pair(last_frame(), -1);
+                        }
+                        else if (!is_url())
+                        {
+                            graph_->set_tag(diagnostics::tag_severity::WARNING, "underflow");
+                            send_osc();
+                            return std::make_pair(last_frame_, -1);
+                        }
+                        else
+                        {
+                            send_osc();
+                            return std::make_pair(last_frame_, -1);
+                        }
+                    }
 
-		auto frame = frame_buffer_.front();
-		frame_buffer_.pop();
+
+                    frame = frame_buffer_.front();
+                    frame_buffer_.pop();
+                    buffer_cond_.notify_all();
+                }
 
 		++frame_number_;
 		file_frame_number_ = frame.second;
@@ -483,6 +534,8 @@ public:
 		else
 			CASPAR_THROW_EXCEPTION(invalid_argument());
 
+                buffer_cond_.notify_all();
+
 		return make_ready_future(std::move(result));
 	}
 
@@ -541,7 +594,7 @@ public:
 		return true;
 	}
 
-	void try_decode_frame()
+	bool try_decode_frame()
 	{
 		std::shared_ptr<AVPacket> pkt;
 
@@ -608,9 +661,17 @@ public:
 		uint32_t file_frame_number = 0;
 		file_frame_number = std::max(file_frame_number, video_decoder_ ? video_decoder_->file_frame_number() : 0);
 
-		for (auto frame = muxer_->poll(); frame != core::draw_frame::empty(); frame = muxer_->poll())
-			if (frame != core::draw_frame::empty())
-				frame_buffer_.push(std::make_pair(frame, file_frame_number));
+                bool got_frame = false;
+		for (auto frame = muxer_->poll(); frame != core::draw_frame::empty(); frame = muxer_->poll()) {
+                    if (frame != core::draw_frame::empty()) {
+                        got_frame = true;
+                        std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
+                        buffer_cond_.wait(buffer_lock, [&] { return frame_buffer_.size() <= 2 || abort_; });
+                        frame_buffer_.push(std::make_pair(frame, file_frame_number));
+                    }
+                }
+
+                return got_frame;
 	}
 
 	bool audio_only() const
