@@ -519,7 +519,7 @@ spl::shared_ptr<AVCodecContext> open_codec(AVFormatContext& context, enum AVMedi
 	//if(strcmp(decoder->name, "prores") == 0 && decoder->next && strcmp(decoder->next->name, "prores_lgpl") == 0)
 	//	decoder = decoder->next;
 
-	THROW_ON_ERROR2(tbb_avcodec_open(context.streams[index]->codec, decoder, single_threaded), "");
+    THROW_ON_ERROR2(avcodec_open2(context.streams[index]->codec, decoder, nullptr), "");
 	return spl::shared_ptr<AVCodecContext>(context.streams[index]->codec, tbb_avcodec_close);
 }
 
