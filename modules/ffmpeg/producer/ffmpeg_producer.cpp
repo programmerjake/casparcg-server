@@ -125,6 +125,7 @@ public:
 	{
 		graph_->set_color("frame-time", diagnostics::color(0.1f, 1.0f, 0.1f));
 		graph_->set_color("underflow", diagnostics::color(0.6f, 0.3f, 0.9f));
+        graph_->set_text(print());
 		diagnostics::register_graph(graph_);
 
 		try
