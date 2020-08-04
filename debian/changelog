@@ -1,3 +1,19 @@
+casparcg-server (2.1.in2ip.03.8-1ubuntu1) UNRELEASED; urgency=medium
+
+  [ Gijs Peskens ]
+  * Use ccache
+  * ccache as per https://gould.cx/ted/blog/2017/06/10/ccache-for-Gitlab-CI/
+  * Create ccache dir if not exist, and show statistics on end
+  * Turn back on timecode synthesis our calc is broken atm
+  * import https://github.com/nrkno/tv-automation-casparcg-server/commit/0ac59d551bc17b67bf4a9557e9e9f1b91e0ce1ae
+  * import https://github.com/nrkno/tv-automation-casparcg-server/commit/a754b74e699e5c5ebcb1ae130bec269078b29dcc
+  * import https://github.com/nrkno/tv-automation-casparcg-server/commit/dca3efc0749ff3430aa8fed968c44f9e8bb720a8
+  * import https://github.com/nrkno/tv-automation-casparcg-server/commit/725bb9f173c72fdafe77096f0552d1a7dd8c8db0
+  * import https://github.com/nrkno/tv-automation-casparcg-server/commit/dc11f732083f3665da68b1d4ece5751e869302dd
+  * CI ccache
+
+ -- gijs <gijs@gijs-desktop>  Tue, 04 Aug 2020 11:48:42 +0200
+
 casparcg-server (2.1.in2ip.03.8-1) unstable; urgency=medium
 
   [ Gijs Peskens ]
