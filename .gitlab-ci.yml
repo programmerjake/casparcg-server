@@ -11,11 +11,11 @@ before_script:
   - chmod 644 ~/.ssh/known_hosts
   - ssh debian-repo@debian.in2ip.net "/bin/true"
   - export CCACHE_BASEDIR=${PWD}
-  - CACHE_DIR=${PWD}/ccache
+  - CCACHE_DIR=${PWD}/ccache
   - mkdir -p ccache
   - export DEBUILD_PREPEND_PATH=/usr/lib/ccache
   - export DEBUILD_PRESERVE_ENVVARS=CCACHE_DIR,CCACHE_BASEDIR
-  - export PATH=/usr/lib/cache:$PATH
+  - export PATH=/usr/lib/ccache:$PATH
 
 after_script:
   - ccache -s
