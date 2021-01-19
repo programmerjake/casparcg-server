@@ -43,7 +43,8 @@
 #include <core/producer/media_info/media_info.h>
 #include <core/producer/framerate/framerate_producer.h>
 #include <core/frame/frame_factory.h>
-
+#include "core/scte/scte.h"
+#include "core/ancillary/ancillary.h"
 #include <future>
 #include <mutex>
 #include <queue>
@@ -110,6 +111,8 @@ struct ffmpeg_producer : public core::frame_producer_base
 
 	int64_t												frame_number_				= 0;
 	uint32_t											file_frame_number_			= 0;
+
+	std::unique_ptr<caspar::core::scte_104>				scte_104_ = nullptr;
 public:
 	explicit ffmpeg_producer(
 			const spl::shared_ptr<core::frame_factory>& frame_factory,
@@ -121,7 +124,8 @@ public:
 			uint32_t out,
 			bool thumbnail_mode,
 			const std::wstring& custom_channel_order,
-			const ffmpeg_options& vid_params)
+			const ffmpeg_options& vid_params,
+			std::unique_ptr<caspar::core::scte_104> scte_104)
 		: filename_(url_or_file)
 		, frame_factory_(frame_factory)
 		, initial_logger_disabler_(temporary_enable_quiet_logging_for_thread(thumbnail_mode))
@@ -131,6 +135,7 @@ public:
 		, framerate_(read_framerate(*input_.context(), format_desc.framerate))
 		, thumbnail_mode_(thumbnail_mode)
 		, last_frame_(core::draw_frame::empty())
+		, scte_104_(std::move(scte_104))
 	{
 		graph_->set_color("frame-time", diagnostics::color(0.1f, 1.0f, 0.1f));
 		graph_->set_color("underflow", diagnostics::color(0.6f, 0.3f, 0.9f));
@@ -334,6 +339,14 @@ public:
 
 		send_osc();
 
+		if (scte_104_) {
+			auto data = scte_104_.get()->tick();
+			if (data)
+			{
+				CASPAR_LOG(debug) << "Got SCTE data";
+				frame.first.ancillary().addData(data);
+			}
+		}
 		return frame;
 	}
 
@@ -530,6 +543,20 @@ public:
 				seek = nb_frames - 1;
 
 			input_.seek(static_cast<uint32_t>(seek));
+		} else if (boost::iequals(cmd, L"scte"))
+		{
+			if (value.empty())
+				scte_104_ = nullptr;
+			else
+			{
+				if (!scte_104_)
+				{
+					scte_104_ = std::make_unique<caspar::core::scte_104>(value);
+				} else
+				{
+					scte_104_.get()->update(value);
+				}
+			}
 		}
 		else
 			CASPAR_THROW_EXCEPTION(invalid_argument());
@@ -773,6 +800,20 @@ spl::shared_ptr<core::frame_producer> create_producer(
 
 	auto filter_str				= get_param(L"FILTER",			params, L"");
 	auto custom_channel_order	= get_param(L"CHANNEL_LAYOUT",	params, L"");
+	auto scte_str				= get_param(L"SCTE", 			params, L"");
+
+	std::unique_ptr<caspar::core::scte_104> scte_104 = nullptr;
+
+    if (!scte_str.empty())
+    {
+	    try {
+		    scte_104 = std::make_unique<caspar::core::scte_104>(scte_str);
+	    }
+	    catch (...)
+	    {
+		    CASPAR_LOG_CURRENT_EXCEPTION();
+	    }
+    }
 
 	boost::ireplace_all(filter_str, L"DEINTERLACE_BOB",	L"YADIF=1:-1");
 	boost::ireplace_all(filter_str, L"DEINTERLACE_LQ",	L"SEPARATEFIELDS");
@@ -805,7 +846,8 @@ spl::shared_ptr<core::frame_producer> create_producer(
 			out,
 			false,
 			custom_channel_order,
-			vid_params);
+			vid_params,
+			std::move(scte_104));
 
 	if (producer->audio_only())
 		return core::create_destroy_proxy(producer);
@@ -848,7 +890,7 @@ core::draw_frame create_thumbnail_frame(
 			out,
 			true,
 			L"",
-			vid_params);
+			vid_params, nullptr);
 
 	return producer->create_thumbnail_frame();
 }

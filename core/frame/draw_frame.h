@@ -23,7 +23,7 @@
 
 #include "frame_visitor.h"
 #include "../fwd.h"
-
+#include "core/ancillary/ancillary.h"
 #include <common/memory.h>
 
 #include <vector>
@@ -68,6 +68,7 @@ public:
 	bool operator==(const draw_frame& other) const;
 	bool operator!=(const draw_frame& other) const;
 
+	caspar::core::ancillary::AncillaryContainer& ancillary();
 	// Properties
 
 	const core::frame_transform&	transform() const;
@@ -77,6 +78,6 @@ private:
 	struct impl;
 	spl::unique_ptr<impl> impl_;
 };
-	
 
 }}
+
