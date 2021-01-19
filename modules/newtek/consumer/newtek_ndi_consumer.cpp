@@ -1,6 +1,7 @@
 /*
  * Copyright 2018
- *
+ * Copyright 2019-2021 in2ip B.V.
+ * 
  * This file is part of CasparCG (www.casparcg.com).
  *
  * CasparCG is free software: you can redistribute it and/or modify
@@ -15,9 +16,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with CasparCG. If not, see <http://www.gnu.org/licenses/>.
- *
+ * Author: Gijs Peskens, gijs@in2ip.nl
  * Author: Krzysztof Zegzula, zegzulakrzysztof@gmail.com
  * based on work of Robert Nagy, ronag89@gmail.com
+ * 
  */
 
 #include "../StdAfx.h"
@@ -30,7 +32,7 @@
 #include <core/mixer/audio/audio_util.h>
 #include <core/video_format.h>
 #include <core/monitor/monitor.h>
-
+#include "core/ancillary/ancillary.h"
 
 #include <common/assert.h>
 #include <common/diagnostics/graph.h>
@@ -41,6 +43,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/crc.hpp>
 
@@ -49,6 +52,7 @@
 #include "../util/ndi.h"
 extern "C"
 {
+            #include "base64.h"
 	        #include <libswscale/swscale.h>
 	        #include <libavcodec/avcodec.h>
 	        #include <libavformat/avformat.h>
@@ -326,6 +330,27 @@ struct newtek_ndi_consumer : public boost::noncopyable
             a_data = core::audio_buffer(buf->data(), buf->size(), true, std::move(buf));
         }
 
+        std::stringstream metadata;
+        boost::property_tree::ptree metadata_tree;
+        bool write_meta = false;
+        for (auto& vanc_line : frame.ancillary().getAncillaryAsLines(1920))
+        {
+            CASPAR_LOG(debug) << "Adding VANC line to metadata";
+            char *base64_vanc = (char*)calloc(Base64encode_len(vanc_line.size() * 4) +1, 1);
+            Base64encode(base64_vanc, (const char *)vanc_line.data(), (vanc_line.size() * 4));
+            CASPAR_LOG(trace) << base64_vanc;
+            metadata_tree.put("VANC_DATA", base64_vanc);
+            free(base64_vanc);
+            write_meta = true;
+        }
+
+        if (write_meta)
+            write_xml(metadata, metadata_tree);
+
+        char *test = (char *)calloc(metadata.str().size() +1, 1);
+        memcpy(test, metadata.str().c_str(), metadata.str().size());
+        ndi_video_frame_.p_metadata = test;
+
         ndi_video_frame_.p_data = v_data;
         ndi_lib_->NDIlib_send_send_video_v2(*ndi_send_instance_, &ndi_video_frame_);
         auto audio_buffer = channel_remapper_->mix_and_rearrange(a_data);
@@ -335,6 +360,7 @@ struct newtek_ndi_consumer : public boost::noncopyable
         current_encoding_delay_ = frame.get_age_millis();
         timebase_frame_no_++;
         graph_->set_value("ndi-consume-time", ndi_consume_timer_.elapsed() * format_desc_.fps * 0.5);
+        free(test);
         return true;
     }
 
