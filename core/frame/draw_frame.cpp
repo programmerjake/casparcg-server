@@ -24,7 +24,8 @@
 #include "draw_frame.h"
 #include "frame.h"
 #include "frame_transform.h"
-
+#include "core/ancillary/ancillary.h"
+#include "common/except.h"
 namespace caspar { namespace core {
 
 enum class tags
@@ -37,6 +38,7 @@ enum class tags
 
 struct draw_frame::impl
 {
+	ancillary::AncillaryContainer	ancillary;
 	std::shared_ptr<const_frame>	frame_;
 	std::vector<draw_frame>			frames_;
 	core::frame_transform			frame_transform_;
@@ -59,12 +61,17 @@ public:
 	impl(std::vector<draw_frame> frames)
 		: frames_(std::move(frames))
 	{
+        for (auto& frame: frames_)
+        {
+            ancillary = std::move(frame.ancillary());
+        }
 	}
 
 	impl(const impl& other)
 		: frames_(other.frames_)
 		, frame_(other.frame_)
 		, frame_transform_(other.frame_transform_)
+        , ancillary(other.ancillary)
 	{
 	}
 
@@ -121,6 +128,7 @@ draw_frame& draw_frame::operator=(draw_frame other)
 }
 void draw_frame::swap(draw_frame& other){impl_.swap(other.impl_);}
 
+caspar::core::ancillary::AncillaryContainer& draw_frame::ancillary() { return impl_->ancillary;}
 const core::frame_transform& draw_frame::transform() const { return impl_->frame_transform_;}
 core::frame_transform& draw_frame::transform() { return impl_->frame_transform_;}
 void draw_frame::accept(frame_visitor& visitor) const{impl_->accept(visitor);}
@@ -135,7 +143,6 @@ draw_frame draw_frame::interlace(draw_frame frame1, draw_frame frame2, core::fie
 
 	if(frame1 == frame2 || mode == field_mode::progressive)
 		return frame2;
-
 	if(mode == field_mode::upper)
 	{
 		frame1.transform().image_transform.field_mode = field_mode::upper;
