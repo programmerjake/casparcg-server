@@ -19,22 +19,28 @@
 * Author: Gijs Peskens <gijs@in2ip.nl>
 */
 
-#pragma once
-
-#include "../ancillary.h"
-#include "messages/messages.h"
+#include "cea708.h"
 
 namespace caspar { namespace core { namespace ancillary {
 
-class SCTE104AncData : public AncillaryData
-{
-    public:
-        std::vector<uint8_t> getData() const;
-        void getVancID(uint8_t& did, uint8_t& sdid) const { did = 0x41; sdid = 0x07; }
-        ancillary_data_type getType() const { return ancillary_data_type_scte_104; }
-        void addMsg(std::unique_ptr<scte104::SCTE104Msg> msg);
-    private:
-        std::list<std::shared_ptr<scte104::SCTE104Msg>> messages;
-};
+    struct CEA708::impl : boost::noncopyable
+    {
+        impl(const uint8_t* data, size_t size, cea708_format type)
+        {
+            //parser atsc a53
+        }
 
+        impl(const &other)
+        {
+            //
+        }
+
+        std::vector<uint8_t> getData()
+        {
+            return std::vector<uint8_t>();
+        }
+    };
+
+    CEA708::CEA708(const uint8_t* data, size_t size, cea708_format type) : impl_(new impl(data, size, type)){}
+    std::vector<uint8_t> CEA708::getData(){ return impl_->getData(); }
 }}}
