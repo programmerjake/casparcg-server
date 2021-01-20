@@ -34,56 +34,34 @@ class AncillaryData
     public:
         AncillaryData(){};
         virtual ~AncillaryData(){};
-        virtual std::vector<uint8_t> getData() = 0;
-        virtual ancillary_data_type getType() = 0;
-        //DID, SDID
-        virtual void getVancID(uint8_t& did, uint8_t& sdid) = 0;
+        virtual std::vector<uint8_t> getData()const = 0;
+        virtual ancillary_data_type getType()const = 0;
+        virtual void getVancID(uint8_t& did, uint8_t& sdid)const = 0;
 };
 
 class AncillaryContainer final
 {
-    std::vector<std::shared_ptr<AncillaryData>> ancillary_data_container;
     public:
-        AncillaryContainer()
-        {
-        }
+        AncillaryContainer();
+        ~AncillaryContainer();
+        AncillaryContainer(const AncillaryContainer& other);
+        AncillaryContainer& operator=(const AncillaryContainer& other);
+        AncillaryContainer(AncillaryContainer&& other);
+        AncillaryContainer& operator=(AncillaryContainer&& other);
 
-        AncillaryContainer(AncillaryContainer && other) noexcept
-        {
-            *this = std::move(other);
-        }
-
-        AncillaryContainer(const AncillaryContainer & other) noexcept
-        {
-            ancillary_data_container = other.ancillary_data_container;
-        }
-
-        void addData(std::shared_ptr<AncillaryData> data)
-        {
-            ancillary_data_container.push_back(data);
-        }
+        void addData(std::shared_ptr<AncillaryData> data);
 
         //Concats all ancillary data into v210 anc lines
         //exclude: OR ancillary_data_types to exclude
         std::list<std::vector<uint32_t>> getAncillaryAsLines(uint32_t width, ancillary_data_type exclude = ancillary_data_none) const;
 
-        AncillaryContainer& operator=(AncillaryContainer&& other) noexcept
-        {
-            if (this != &other)
-            {
-                for (auto & item : other.ancillary_data_container)
-                {
-                    ancillary_data_container.push_back(std::move(item));
-                }
-                other.clear();
-            }
-            return *this;
-        }
+        void clear();
+        
+        void appendFrom(AncillaryContainer& other);
 
-        void clear()
-        {
-            ancillary_data_container.clear();
-        }
+        private:
+            struct impl;
+            spl::unique_ptr<impl> impl_;
 };
 
 }}}

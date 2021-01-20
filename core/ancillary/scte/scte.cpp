@@ -25,7 +25,7 @@
 #include "messages/splicerequest.h"
 
 namespace caspar { namespace core { namespace ancillary {
-    void write_scte_104_hdr(std::vector<std::uint8_t>&buf, size_t size)
+    static void write_scte_104_hdr(std::vector<std::uint8_t>&buf, size_t size)
     {
         Bitstream bs = Bitstream(buf);
 
@@ -42,7 +42,7 @@ namespace caspar { namespace core { namespace ancillary {
         bs.write_byte(size);//num_ops
     }
 
-    void set_scte_104_length(std::vector<std::uint8_t>&buf)
+    static void set_scte_104_length(std::vector<std::uint8_t>&buf)
     {
         std::size_t size = buf.size() -1;// minus one because of inclusion of 2010 PD
         uint8_t *data = buf.data();
@@ -50,7 +50,7 @@ namespace caspar { namespace core { namespace ancillary {
         data[4] = size & 0xff;
     }
 
-    std::vector<uint8_t> SCTE104AncData::getData() {
+    std::vector<uint8_t> SCTE104AncData::getData()const {
         std::vector<uint8_t> out;
         write_scte_104_hdr(out, messages.size());
         for (auto msg : messages)
@@ -61,7 +61,7 @@ namespace caspar { namespace core { namespace ancillary {
         return out;
     }
 
-    void SCTE104AncData::addMsg(std::shared_ptr<scte104::SCTE104Msg> msg)
+    void SCTE104AncData::addMsg(std::unique_ptr<scte104::SCTE104Msg> msg)
     {
         messages.push_back(std::move(msg));
     }

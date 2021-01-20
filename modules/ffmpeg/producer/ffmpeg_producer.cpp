@@ -344,7 +344,7 @@ public:
 			if (data)
 			{
 				CASPAR_LOG(debug) << "Got SCTE data";
-				frame.first.ancillary().addData(data);
+				frame.first.ancillary().addData(std::move(data));
 			}
 		}
 		return frame;
