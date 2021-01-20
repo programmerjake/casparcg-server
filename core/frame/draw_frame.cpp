@@ -63,7 +63,7 @@ public:
 	{
         for (auto& frame: frames_)
         {
-            ancillary = std::move(frame.ancillary());
+            ancillary.appendFrom(frame.ancillary());
         }
 	}
 

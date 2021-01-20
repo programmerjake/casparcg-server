@@ -98,7 +98,7 @@ public:
 					frame.second.accept(audio_mixer_);
 					frame.second.transform().image_transform.layer_depth = 1;
 					frame.second.accept(*image_mixer_);
-					ancillary = std::move(frame.second.ancillary());
+					ancillary.appendFrom(frame.second.ancillary());
 				}
 
 				auto image = (*image_mixer_)(format_desc, straighten_alpha_);
