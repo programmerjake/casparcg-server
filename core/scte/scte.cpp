@@ -147,7 +147,7 @@ struct scte_104::impl : boost::noncopyable
         auto scte104_ancillary = std::make_shared<core::ancillary::SCTE104AncData>();
         if (opid == core::ancillary::scte104::opid_splice) {
             
-            auto splicerequest = std::make_shared<core::ancillary::scte104::SpliceRequest>(splice_type
+            auto splicerequest = std::make_unique<core::ancillary::scte104::SpliceRequest>(splice_type
                                                                                          , event_id
                                                                                          , unique_program_id
                                                                                          , next_remaining_mark
@@ -155,7 +155,7 @@ struct scte_104::impl : boost::noncopyable
                                                                                          , avail_num
                                                                                          , avails_expected
                                                                                          , auto_return_flag);
-            scte104_ancillary->addMsg(splicerequest);
+            scte104_ancillary->addMsg(std::move(splicerequest));
             CASPAR_LOG(debug) << "Splice request, type: " << splice_type
                             << " event id: " << event_id
                             << " unique program_id: " << unique_program_id
@@ -172,7 +172,7 @@ struct scte_104::impl : boost::noncopyable
             }
         } else
         {
-            scte104_ancillary->addMsg(std::make_shared<core::ancillary::scte104::SpliceNull>());
+            scte104_ancillary->addMsg(std::make_unique<core::ancillary::scte104::SpliceNull>());
             CASPAR_LOG(debug) << "Splice NULL";
         }
 

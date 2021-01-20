@@ -22,19 +22,24 @@
 #pragma once
 
 #include "../ancillary.h"
-#include "messages/messages.h"
 
 namespace caspar { namespace core { namespace ancillary {
 
-class SCTE104AncData : public AncillaryData
-{
-    public:
-        std::vector<uint8_t> getData() const;
-        void getVancID(uint8_t& did, uint8_t& sdid) const { did = 0x41; sdid = 0x07; }
-        ancillary_data_type getType() const { return ancillary_data_type_scte_104; }
-        void addMsg(std::unique_ptr<scte104::SCTE104Msg> msg);
-    private:
-        std::list<std::shared_ptr<scte104::SCTE104Msg>> messages;
-};
+    enum cea708_format {
+        atsc53,
+        cdp
+    };
+
+    class CEA708 : public AncillaryData
+    {
+        public:
+            CEA708(const uint8_t* data, size_t size, cea708_format type);
+            std::vector<uint8_t> getData();
+            void getVancID(uint8_t& did, uint8_t& sdid) { did = 0x61; sdid = 0x01; }
+            ancillary_data_type getType() { return ancillary_data_type_cea708; }
+        private:
+            struct impl;
+            spl::unique_ptr<impl> impl_;
+    };
 
 }}}
