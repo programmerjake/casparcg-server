@@ -451,7 +451,7 @@ struct Filter
             }
         }
 
-        if (video_input_count == 1) {
+        if (video_input_count == 1 && video_streams.size() > 1) {
             std::stable_sort(video_streams.begin(), video_streams.end(), [&](AVStream* lhs, AVStream* rhs) {
                 return lhs->codecpar->height > rhs->codecpar->height;
             });
@@ -459,7 +459,7 @@ struct Filter
             auto same_properties = [](AVStream* lhs, AVStream* rhs) {
                 auto lcp = lhs->codecpar;
                 auto rcp = rhs->codecpar;
-                return lcp->width == rcp->width && lcp->height == rcp->height &&
+                return lcp->width > 0 && lcp->height > 0 && lcp->width == rcp->width && lcp->height == rcp->height &&
                        lcp->sample_aspect_ratio.num == rcp->sample_aspect_ratio.num &&
                        lcp->sample_aspect_ratio.den == rcp->sample_aspect_ratio.den &&
                        lcp->field_order == rcp->field_order;
@@ -467,10 +467,30 @@ struct Filter
 
             // TODO (fix) Use some form of stream meta data to do this.
             // https://github.com/CasparCG/server/issues/832
-            if (video_streams.size() > 1 && same_properties(video_streams[0], video_streams[1])) {
-                if (video_streams.size() == 2 || !same_properties(video_streams[0], video_streams[2])) {
-                    filter_spec = "alphamerge," + filter_spec;
+            AVStream* matched_key  = nullptr;
+            AVStream* matched_fill = nullptr;
+            size_t    match_count  = 0;
+            for (size_t i = 0; i < video_streams.size(); ++i) {
+                for (size_t j = i + 1; j < video_streams.size(); ++j) {
+                    if (same_properties(video_streams[i], video_streams[j])) {
+                        matched_key  = video_streams[i];
+                        matched_fill = video_streams[j];
+                        ++match_count;
+                    }
                 }
+            }
+
+            if (match_count == 1) {
+                std::stable_partition(video_streams.begin(), video_streams.end(), [&](AVStream* s) {
+                    return s == matched_key || s == matched_fill;
+                });
+
+                filter_spec = "alphamerge," + filter_spec;
+            } else {
+                CASPAR_LOG(warning) << "[ffmpeg::av_producer] Skipping automatic alphamerge for "
+                                    << video_streams.size() << " video streams ("
+                                    << (match_count == 0 ? "no match" : "ambiguous match")
+                                    << "). Use explicit stream specifiers or filter inputs to select streams.";
             }
         }
 
