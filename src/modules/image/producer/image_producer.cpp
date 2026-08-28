@@ -44,6 +44,8 @@ struct image_producer : public core::frame_producer
     const uint32_t                             length_ = 0;
     core::draw_frame                           frame_;
 
+    std::shared_ptr<core::frame_side_data_queue> side_data_queue_ = std::make_shared<core::frame_side_data_queue>();
+
     image_producer(const spl::shared_ptr<core::frame_factory>& frame_factory,
                    std::wstring                                description,
                    uint32_t                                    length,
@@ -56,9 +58,15 @@ struct image_producer : public core::frame_producer
         if (!is_frame_compatible_with_mixer(av_frame))
             av_frame = convert_image_frame(av_frame, AV_PIX_FMT_BGRA);
 
-        auto frame =
-            ffmpeg::make_frame(this, *frame_factory, av_frame, nullptr, ffmpeg::get_color_space(av_frame), scale_mode, true);
-        frame_ = core::draw_frame(std::move(frame));
+        auto frame = ffmpeg::make_frame(this,
+                                        *frame_factory,
+                                        av_frame,
+                                        nullptr,
+                                        side_data_queue_,
+                                        ffmpeg::get_color_space(av_frame),
+                                        scale_mode,
+                                        true);
+        frame_     = core::draw_frame(std::move(frame));
 
         state_["file/path"] = description_;
 
@@ -77,9 +85,15 @@ struct image_producer : public core::frame_producer
         if (!is_frame_compatible_with_mixer(av_frame))
             av_frame = convert_image_frame(av_frame, AV_PIX_FMT_BGRA);
 
-        auto frame =
-            ffmpeg::make_frame(this, *frame_factory, av_frame, nullptr, ffmpeg::get_color_space(av_frame), scale_mode, true);
-        frame_ = core::draw_frame(std::move(frame));
+        auto frame = ffmpeg::make_frame(this,
+                                        *frame_factory,
+                                        av_frame,
+                                        nullptr,
+                                        side_data_queue_,
+                                        ffmpeg::get_color_space(av_frame),
+                                        scale_mode,
+                                        true);
+        frame_     = core::draw_frame(std::move(frame));
 
         CASPAR_LOG(info) << print() << L" Initialized";
     }
